@@ -39,7 +39,7 @@ async def _resume(file_path):
     return data
 
 
-@app.post("/upload")
+@app.post("/upload", response_class=HTMLResponse)
 async def post_file(file: UploadFile = File(...)):
     file_extension = file.filename.split(".").pop()
     if file_extension == "pdf":
@@ -61,7 +61,16 @@ async def post_file(file: UploadFile = File(...)):
 
     data = await _resume(file_path)
     os.remove(file_path)
-
-    return {
-        "successfully parsed": jsonable_encoder(data),
-    }
+    print(data)
+    content = """
+    <html>
+        <head>
+            <title>Success</title>
+        </head>
+        <body>
+            <h1>Upload Successful</h1>
+        </body>
+        
+    </html>
+    """
+    return HTMLResponse(content=content, status_code=200)
