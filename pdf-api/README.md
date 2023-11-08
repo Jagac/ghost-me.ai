@@ -5,5 +5,8 @@ run
 stop
 
     docker-compose down
+    
+access
 
+    http://localhost/
 ![Alt text](api_architecture.png)
