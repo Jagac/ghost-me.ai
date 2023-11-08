@@ -12,7 +12,7 @@ import os
 from pyresparser import ResumeParser
 import warnings
 import aiofiles
-
+import socket
 
 warnings.filterwarnings("ignore")
 
@@ -62,4 +62,6 @@ async def post_file(file: UploadFile = File(...)):
     data = await _resume(file_path)
     os.remove(file_path)
 
-    return {"successfully parsed": jsonable_encoder(data)}
+    return {
+        "successfully parsed": jsonable_encoder(data),
+    }
