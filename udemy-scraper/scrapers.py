@@ -4,44 +4,7 @@ import time
 import httpx
 from fp.fp import FreeProxy
 
-
-class Super:
-    def __init__(self, num_pages: int, proxy: bool = False) -> None:
-        logging.basicConfig(
-            level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-        )
-
-        self.num_pages = num_pages
-        self.proxy = proxy
-
-    def generate_payloads(self) -> list[dict]:
-        # make payloads to request different pages
-        # we care about page number, everything else can stay the same
-        lst = []
-        for i in range(1, self.num_pages + 1):
-            payload2 = self.payload.copy()
-            payload2["page"] = i
-            lst.append(payload2)
-
-        return lst
-
-    def make_post_request(self, client: httpx.Client, url: str, payload: dict) -> dict:
-        # simple request
-        request = client.post(url, json=payload)
-        logging.info(request)
-        response = request.json()
-
-        return response
-
-    def make_get_request(
-        self, client: httpx.Client, url: str, payload: dict = None
-    ) -> dict:
-        # simple request
-        request = client.get(url)
-        logging.info(request)
-        response = request.json()
-
-        return response
+from utils import Super
 
 
 class CoursesityUdemy(Super):
@@ -52,6 +15,7 @@ class CoursesityUdemy(Super):
         proxy: bool = False,
     ) -> None:
         super().__init__(num_pages, proxy)
+
         self.payload = {
             "page": 1,
             "limit": 10,
@@ -93,15 +57,12 @@ class CoursesityUdemy(Super):
                     "id": course_info["productId"],
                     "title": course_info["title"],
                     "headline": course_info["headline"],
-                    "total_rating": course_info["totalRating"],
-                    "avg_rating": course_info["avgRating"],
+                    "rating": course_info["avgRating"],
                     "enrolled": course_info["totalEnrollment"],
                     "url": course_info["url"],
                     "duration": course_info["durationHours"],
                     "section": course_info["courseSection"],
                     "sub_category": course_info["subCategory"],
-                    "url_slug": course_info["urlSlug"],
-                    "section_slug": course_info["courseSectionUrlslug"],
                     "prce": course_info["priceType"],
                 }
 
@@ -110,13 +71,10 @@ class CoursesityUdemy(Super):
         return json_object
 
     def gather_udemy_courses(self) -> dict:
-        if self.proxy == True:
+        if self.proxy:
             logging.info("proxy set to True")
             try:
-                proxy_object = FreeProxy(rand=True, timeout=1, elite=True, https=True)
-                logging.info(f"gathering proxies")
-                proxy = proxy_object.get()
-                logging.info(f"proxy address {proxy}")
+                proxy = self.generate_proxy()
                 payload_list = self.generate_payloads()
                 data = self.parse(payload_list=payload_list, url=self.url, proxy=proxy)
                 cleaned_data = self.cleanup(data=data)
@@ -124,15 +82,9 @@ class CoursesityUdemy(Super):
                 return cleaned_data
 
             except:
-                logging.exception("error making requests... attempting without proxy")
-                payload_list = self.generate_payloads()
-                data = self.parse(payload_list=payload_list, url=self.url)
-                cleaned_data = self.cleanup(data=data)
-
-                return cleaned_data
+                logging.exception("error making requests... retry or set proxy = False")
 
         else:
-            logging.info("starting data collection")
             payload_list = self.generate_payloads()
             data = self.parse(payload_list=payload_list, url=self.url)
             cleaned_data = self.cleanup(data=data)
@@ -161,15 +113,15 @@ class RealDiscountUdemy(Super):
             try:
                 course = {
                     "id": val["id"],
-                    "name": val["name"],
-                    "category": val["category"],
-                    "sub_category": val["subcategory"],
-                    "length": val["lectures"],
-                    "sale_price": val["sale_price"],
-                    "price": val["price"],
-                    "description": val["shoer_description"],
+                    "title": val["name"],
+                    "headline": val["shoer_description"],
+                    "rating": val["rating"],
+                    "enrolled": val["students"],
                     "url": val["url"],
-                    "enrolment": val["students"],
+                    "duration": val["lectures"],
+                    "section": val["category"],
+                    "sub_category": val["subcategory"],
+                    "price": val["price"],
                 }
             except:
                 continue
@@ -180,14 +132,28 @@ class RealDiscountUdemy(Super):
 
     def gather_udemy_courses(self):
         json_data = []
+        if self.proxy:
+            proxy = self.generate_proxy()
+            try:
+                for i in range(1, self.num_pages + 1):
+                    logging.info(f"page number: {i}")
+                    url = f"https://www.real.discount/api-web/all-courses/?store=Udemy&page={i}&per_page=10&orderby=undefined&free=0&search=&language=English&cat=&subcat=&editorschoices="
+                    data = self.parse(url=url, proxy=proxy)
+                    cleaned_data = self.cleanup(data=data)
 
-        for i in range(1, self.num_pages + 1):
-            logging.info(f"page number: {i}")
-            url = f"https://www.real.discount/api-web/all-courses/?store=Udemy&page={i}&per_page=10&orderby=undefined&free=0&search=&language=English&cat=&subcat=&editorschoices="
-            data = self.parse(url=url)
-            cleaned_data = self.cleanup(data=data)
+                    json_data.extend(cleaned_data)
+                    time.sleep(self.delay)
+            except:
+                logging.exception("error making requests... retry or set proxy = False")
 
-            json_data.extend(cleaned_data)
-            time.sleep(self.delay)
+        else:
+            for i in range(1, self.num_pages + 1):
+                logging.info(f"page number: {i}")
+                url = f"https://www.real.discount/api-web/all-courses/?store=Udemy&page={i}&per_page=10&orderby=undefined&free=0&search=&language=English&cat=&subcat=&editorschoices="
+                data = self.parse(url=url)
+                cleaned_data = self.cleanup(data=data)
+
+                json_data.extend(cleaned_data)
+                time.sleep(self.delay)
 
         return json_data
