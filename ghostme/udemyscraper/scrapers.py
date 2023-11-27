@@ -1,3 +1,4 @@
+import json
 import logging
 import time
 
@@ -15,7 +16,7 @@ class CoursesityUdemy(Super):
         proxy: bool = False,
     ) -> None:
         super().__init__(num_pages, proxy)
-
+        
         self.payload = {
             "page": 1,
             "limit": 10,
@@ -67,8 +68,11 @@ class CoursesityUdemy(Super):
                 }
 
                 json_object.append(course)
-
-        return json_object
+            
+                 
+            return json_object
+            
+                
 
     def gather_udemy_courses(self) -> dict:
         if self.proxy:
@@ -157,3 +161,5 @@ class RealDiscountUdemy(Super):
                 time.sleep(self.delay)
 
         return json_data
+
+

@@ -1,8 +1,8 @@
 # not usable as it overloads the API
-import httpx
 import asyncio
 import json
 
+import httpx
 
 url = "https://api.coursesity.com/api/courses/"  # hidden api
 
