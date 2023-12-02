@@ -1,3 +1,0 @@
-pyresparser
-fastapi[all]
-aiofiles

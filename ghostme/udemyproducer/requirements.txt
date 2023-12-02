@@ -1,0 +1,4 @@
+httpx
+free-proxy
+fastapi[all]
+pika

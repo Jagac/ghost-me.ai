@@ -4,19 +4,18 @@ import time
 
 import httpx
 from fp.fp import FreeProxy
-
 from utils import Super
 
 
 class CoursesityUdemy(Super):
     def __init__(
         self,
-        num_pages: int,
+        num_pages: int = 10,
         delay: int | float = 2,
         proxy: bool = False,
     ) -> None:
         super().__init__(num_pages, proxy)
-        
+
         self.payload = {
             "page": 1,
             "limit": 10,
@@ -68,11 +67,8 @@ class CoursesityUdemy(Super):
                 }
 
                 json_object.append(course)
-            
-                 
+
             return json_object
-            
-                
 
     def gather_udemy_courses(self) -> dict:
         if self.proxy:
@@ -98,7 +94,7 @@ class CoursesityUdemy(Super):
 
 class RealDiscountUdemy(Super):
     def __init__(
-        self, num_pages: int, proxy: bool = False, delay: int | float = 2
+        self, num_pages: int = 10, proxy: bool = False, delay: int | float = 2
     ) -> None:
         super().__init__(num_pages, proxy)
         self.delay = delay
@@ -161,5 +157,3 @@ class RealDiscountUdemy(Super):
                 time.sleep(self.delay)
 
         return json_data
-
-
