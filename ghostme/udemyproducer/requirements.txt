@@ -1,4 +1,5 @@
 httpx
 free-proxy
-fastapi[all]
+fastapi
+uvicorn[standard]
 pika

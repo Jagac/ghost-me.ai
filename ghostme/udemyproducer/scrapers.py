@@ -10,7 +10,7 @@ from utils import Super
 class CoursesityUdemy(Super):
     def __init__(
         self,
-        num_pages: int = 10,
+        num_pages: int = 100,
         delay: int | float = 2,
         proxy: bool = False,
     ) -> None:
@@ -94,7 +94,7 @@ class CoursesityUdemy(Super):
 
 class RealDiscountUdemy(Super):
     def __init__(
-        self, num_pages: int = 10, proxy: bool = False, delay: int | float = 2
+        self, num_pages: int = 100, proxy: bool = False, delay: int | float = 2
     ) -> None:
         super().__init__(num_pages, proxy)
         self.delay = delay
