@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir --default-timeout=100 -r /code/requirements.txt
 COPY . /code
 
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:5000", "main:app"]
