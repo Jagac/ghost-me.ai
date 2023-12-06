@@ -20,13 +20,13 @@ file_path = "path/to/pdf"
 def register_user() -> None:
     response = requests.post(f"{api_url}/users/", json=user_data)
     response.raise_for_status()
-    print("User registration response:", response.text)
+    print(f"User registration response: {response.text}")
 
 def get_token() -> str:
     response = requests.post(f"{api_url}/login/", json=user_data)
     response.raise_for_status()
     token_data = response.json()
-    print("Login response:", token_data)
+    print(f"Login response: {token_data}")
 
     return token_data
 
