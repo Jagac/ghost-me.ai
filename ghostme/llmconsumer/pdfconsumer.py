@@ -1,76 +1,73 @@
-import asyncio
-import io
-import logging
-
-import aio_pika
-import PyPDF2
-from langchain.docstore.document import Document
-import aiofiles
+import pika
+import json
+import base64
 
 
-async def setup_rabbitmq_connection():
+def create_rabbitmq_connection():
     rabbitmq_params = {
-        "host": "rabbitmq",  # Replace with your RabbitMQ container name or IP
+        "host": "localhost",
         "port": 5672,
         "virtualhost": "/",
         "login": "guest",
         "password": "guest",
     }
 
-    connection = await aio_pika.connect_robust(
-        f"amqp://{rabbitmq_params['login']}:{rabbitmq_params['password']}@{rabbitmq_params['host']}:{rabbitmq_params['port']}/{rabbitmq_params['virtualhost']}"
+    connection_params = pika.ConnectionParameters(
+        host=rabbitmq_params["host"],
+        port=rabbitmq_params["port"],
+        virtual_host=rabbitmq_params["virtualhost"],
+        credentials=pika.PlainCredentials(
+            rabbitmq_params["login"], rabbitmq_params["password"]
+        ),
     )
-    logging.info("Connected to rabbitmq")
+
+    connection = pika.BlockingConnection(connection_params)
     return connection
 
 
-async def consume_messages(channel, exchange, queue, ack_event):
-    # Set basic.qos to limit the number of unacknowledged messages
-    await channel.set_qos(prefetch_count=1)
+def on_message(channel, method_frame, header_frame, body):
+    message = json.loads(body.decode())
+    username = message.get("username")
+    job_desc = message.get("job_desc")
 
-    async def on_message(message: aio_pika.IncomingMessage):
-        try:
-            async with message.process():
-                body = message.body
-                # Process the message (replace this with your own logic)
-                print(f"Received message: {body}")
+    # Decode the base64-encoded content back to bytes
+    file_content_base64 = message.get("file_content")
+    file_content = base64.b64decode(file_content_base64.encode())
 
-                await message.ack()
-        except Exception as e:
-            # Handle exceptions during message processing
-            logging.error(f"Error processing message: {e}")
-            # Do not acknowledge the message to allow for retry or further investigation
+    print(f"Received message: {message}")
+    print(f"Username: {username}")
+    print(f"Job Description: {job_desc}")
 
-        finally:
-            # Set the ack_event to notify that the message has been processed
-            ack_event.set()
+    # Write the bytes to a PDF file
+    pdf_filename = f"{username}_{job_desc}.pdf"  # Adjust the filename as needed
+    with open(pdf_filename, "wb") as pdf_file:
+        pdf_file.write(file_content)
 
-    await queue.bind(exchange, routing_key="resume_pdf")
-    await queue.consume(on_message)
+    print(f"PDF file '{pdf_filename}' written successfully.")
+
+    channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
 
-async def main():
-    ack_event = asyncio.Event()
+def create_consumer():
+    connection = create_rabbitmq_connection()
+    channel = connection.channel()
 
-    rabbitmq_connection = await setup_rabbitmq_connection()
-    channel = await rabbitmq_connection.channel()
-
-    exchange = await channel.declare_exchange(
-        "upload_exchange", type="direct", durable=True
+    # Specify the exchange type when creating the exchange
+    channel.exchange_declare(
+        exchange="upload_exchange", exchange_type="direct", durable=True
     )
 
-    queue = await channel.declare_queue("upload_queue", durable=True)
-    asyncio.create_task(consume_messages(channel, exchange, queue, ack_event))
+    queue = channel.queue_declare(queue="upload_queue", durable=True)
+    channel.queue_bind(
+        exchange="upload_exchange", queue="upload_queue", routing_key="resume_pdf"
+    )
 
-    try:
-        await ack_event.wait()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        await rabbitmq_connection.close()
+    channel.basic_qos(prefetch_count=1)
+    channel.basic_consume(queue="upload_queue", on_message_callback=on_message)
+
+    print("Waiting for messages. To exit press CTRL+C")
+    channel.start_consuming()
+
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        pass
+    create_consumer()

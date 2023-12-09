@@ -6,17 +6,19 @@ import database
 import models
 import schemas
 from fastapi import Depends, FastAPI, File, HTTPException, status
-from rabbitmq import MQ
-
-
-async def startup_event():
-    app.rabbitmq_connection = await MQ.create_rabbitmq_connection()
-
+import rabbitmq
 
 app = FastAPI()
+
+
+# connect to rabbitmq on startup
+async def startup_event():
+    app.rabbitmq_connection = await rabbitmq.create_rabbitmq_connection()
+
+
 app.add_event_handler("startup", startup_event)
 
-
+# health check
 @app.get("/")
 async def main():
     return {"server": "works"}
@@ -24,8 +26,10 @@ async def main():
 
 @app.post("/uploadfile/", status_code=status.HTTP_202_ACCEPTED)
 async def create_upload_file(
+    job_desc: str,
     current_user: str = Depends(auth.get_current_user),
     file: bytes = File(...),
+    
 ):
     if not file:
         raise HTTPException(status_code=400, detail="No file provided")
@@ -33,25 +37,26 @@ async def create_upload_file(
     if b"%PDF" not in file:
         raise HTTPException(status_code=400, detail="Uploaded file is not a PDF")
 
-    asyncio.create_task(MQ.publish_message(file, app.rabbitmq_connection))
+    asyncio.create_task(rabbitmq.publish_message(file, job_desc, current_user,app.rabbitmq_connection))
 
     return {"message": "File uploaded successfully"}
 
 
-@app.post("/users/", status_code=status.HTTP_201_CREATED)
+@app.post("/users/register", status_code=status.HTTP_201_CREATED)
 async def create_user(
     user_data: schemas.UserCreate, db: database.AsyncSession = Depends(database.get_db)
 ):
     hashed_password = await auth.hash_password_async(user_data.password)
 
     new_user = models.User(username=user_data.username, password=hashed_password)
+
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
     return {"message": "User created successfully"}
 
 
-@app.post("/login/")
+@app.post("/users/login")
 async def login_user(
     user_data: schemas.UserCreate, db: database.AsyncSession = Depends(database.get_db)
 ):
