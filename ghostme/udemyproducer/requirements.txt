@@ -1,5 +1,0 @@
-httpx
-free-proxy
-fastapi
-uvicorn[standard]
-pika

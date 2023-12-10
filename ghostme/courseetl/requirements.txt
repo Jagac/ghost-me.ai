@@ -1,0 +1,4 @@
+httpx
+aiolimiter
+schedule
+psycopg2-binary
