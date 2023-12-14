@@ -1,4 +1,3 @@
+pika
 langchain
-aio_pika
-PyPDF2
-aiofiles
+pypdf

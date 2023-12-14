@@ -26,13 +26,13 @@ def get_token():
 
 
 # use the token to access the upload endpoint and upload a pdf
-def send_upload_file_request(jwt_token):
+def send_upload_file_request(jwt_token, num):
     files = {"file": ("file.pdf", open(file_path, "rb"), "application/pdf")}
     headers = {"Authorization": f"Bearer {jwt_token}"}
-    params = {"job_desc": "testing job_desc"}  # Include job_desc in query parameters
+    params = {"job_desc": f"{num}"}  # Include job_desc in query parameters
 
     response = requests.post(
-        f"{api_url}/uploadfile/", files=files, headers=headers, params=params
+        f"{api_url}/upload", files=files, headers=headers, params=params
     )
 
     print(f"Status Code: {response.status_code}")
@@ -43,8 +43,8 @@ def main():
     register_user()
     token_data = get_token()
     jwt_token = token_data.get("access_token", "")
-
-    send_upload_file_request(jwt_token)
+    for num in range(10):  
+        send_upload_file_request(jwt_token, num)
 
 
 if __name__ == "__main__":

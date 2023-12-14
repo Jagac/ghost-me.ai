@@ -43,9 +43,7 @@ services:
       
   scrapers:
     build:
-      context: udemyproducer
-    ports:
-      - '8000:8000'
+      context: courseetl
     deploy:
       restart_policy:
         condition: on-failure
@@ -68,6 +66,26 @@ services:
         POSTGRES_PASSWORD: 123
         POSTGRES_DB: ghostmedb
 
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+
+    networks:
+      - rabbitmq_go_net
+      
+  llmconsumer:
+    build:
+      context: llmconsumer
+    depends_on:
+      - rabbitmq
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+       
     networks:
       - rabbitmq_go_net
 

@@ -1,11 +1,12 @@
 import pika
 import json
 import base64
+import llm
 
 
 def create_rabbitmq_connection():
     rabbitmq_params = {
-        "host": "localhost",
+        "host": "rabbitmq",
         "port": 5672,
         "virtualhost": "/",
         "login": "guest",
@@ -34,16 +35,13 @@ def on_message(channel, method_frame, header_frame, body):
     file_content_base64 = message.get("file_content")
     file_content = base64.b64decode(file_content_base64.encode())
 
-    print(f"Received message: {message}")
-    print(f"Username: {username}")
-    print(f"Job Description: {job_desc}")
-
-    # Write the bytes to a PDF file
-    pdf_filename = f"{username}_{job_desc}.pdf"  # Adjust the filename as needed
+    pdf_filename = f"{username}.pdf"  # Adjust the filename as needed
     with open(pdf_filename, "wb") as pdf_file:
         pdf_file.write(file_content)
 
-    print(f"PDF file '{pdf_filename}' written successfully.")
+    file = llm.load_document(pdf_filename)
+    chunks = llm.chunk_data(file)
+    print(chunks)
 
     channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 

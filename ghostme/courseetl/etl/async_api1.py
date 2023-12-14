@@ -4,8 +4,10 @@ import httpx
 from aiolimiter import AsyncLimiter
 import psycopg2
 from psycopg2.extras import execute_values
+import logging
 
-rate_limit = AsyncLimiter(2, 2)
+logging.basicConfig(level=logging.INFO)
+rate_limit = AsyncLimiter(1, 1)
 
 
 async def make_request(
@@ -13,7 +15,7 @@ async def make_request(
     url: str,
     payload: dict,
     rate_limit,
-    max_retries=3,
+    max_retries=5,
     retry_delay=10,
 ) -> Dict[str, Any]:
     async with rate_limit:
@@ -25,20 +27,20 @@ async def make_request(
                 return response
             except httpx.HTTPError as e:
                 # Log the error or perform other actions if needed
-                print(f"Attempt {attempt} failed with error: {e}")
+                logging.info(f"Attempt {attempt} failed with error: {e}")
 
                 # If it's the last attempt, raise the last encountered error
                 if attempt == max_retries:
                     raise e
 
+                retry_delay *= 2
                 # Log the payload for retry
-                print(f"Retrying after {retry_delay} seconds...")
+                logging.info(f"Retrying after {retry_delay} seconds...")
                 await asyncio.sleep(retry_delay)
-
 
 async def extract(starting_payload, url):
     payloads = []
-    for i in range(1, 10):
+    for i in range(1, 5):
         payload2 = starting_payload.copy()
         payload2["page"] = i
         payloads.append(payload2)
@@ -70,7 +72,7 @@ def transform(data: List[dict]) -> List[dict]:
                 "duration": course_info["durationHours"],
                 "section": course_info["courseSection"],
                 "sub_category": course_info["subCategory"],
-                "prce": course_info["priceType"],
+                "price": course_info["priceType"],
             }
 
             json_object.append(course)
@@ -123,12 +125,13 @@ def dump_to_pgs(
                     course_data["duration"],
                     course_data["section"],
                     course_data["sub_category"],
-                    course_data["prce"],
+                    course_data["price"],
                 )
 
                 cur.execute(insert_data_query, values)
 
             conn.commit()
+            logging.info(f"Number of rows inserted: {cur.rowcount}")
 
 
 def main():
@@ -149,4 +152,5 @@ def main():
 
     raw_data = asyncio.run(extract(payload, url))
     transformed = transform(raw_data)
+    print(transformed)
     dump_to_pgs("jagac", "123", "db_postgres", transformed, "courses")
