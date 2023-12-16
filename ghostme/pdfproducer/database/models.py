@@ -1,9 +1,7 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class Base(DeclarativeBase):
-    pass
-
+from .dbinitializer import Base
 
 class UserModel(Base):
     __tablename__ = "users"
