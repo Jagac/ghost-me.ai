@@ -1,14 +1,14 @@
 import os
-from langchain.document_loaders import PyPDFLoader
-from langchain.document_loaders import Docx2txtLoader
-from langchain.document_loaders import TextLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+import time
 
-from langchain.vectorstores import Pinecone
-from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chains import ConversationalRetrievalChain
 from langchain.chat_models import ChatOpenAI
-import time
+from langchain.document_loaders import (Docx2txtLoader, PyPDFLoader,
+                                        TextLoader, UnstructuredPDFLoader,
+                                        YoutubeLoader)
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Pinecone
 
 
 def load_document(file: str) -> str:
@@ -31,7 +31,7 @@ def load_document(file: str) -> str:
     if extension == ".pdf":
         # If the file is a PDF, create a PyPDFLoader and load the file
         print(f"Loading {file}")
-        loader = PyPDFLoader(file)
+        loader = UnstructuredPDFLoader(file)
     elif extension == ".docx":
         # If the file is a DOCX, create a Docx2txtLoader and load the file
         print(f"Loading {file}")
@@ -45,12 +45,13 @@ def load_document(file: str) -> str:
         return None
 
     # Load the document using the loader
-    data = loader.load()
+    data = loader.load_and_split()
+    print(len(data))
 
     return data
 
 
-def chunk_data(data: str, chunk_size=256) -> str:
+def chunk_data(data: str, chunk_size=2000) -> str:
     """
     Chunk the data into smaller pieces.
 
@@ -63,7 +64,7 @@ def chunk_data(data: str, chunk_size=256) -> str:
     """
 
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size, chunk_overlap=0
+        chunk_size=chunk_size, chunk_overlap=512
     )
     chunks = text_splitter.split_documents(data)
 

@@ -1,9 +1,10 @@
 import asyncio
-from typing import Any, Dict
-import httpx
-from aiolimiter import AsyncLimiter
-import psycopg2
 import logging
+from typing import Any, Dict
+
+import httpx
+import psycopg2
+from aiolimiter import AsyncLimiter
 
 logging.basicConfig(level=logging.INFO)
 from typing import List

@@ -1,6 +1,7 @@
 import asyncio
-import time
 import logging
+import time
+
 from etl import async_api1, async_api2
 
 logging.basicConfig(level=logging.INFO)

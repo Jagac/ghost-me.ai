@@ -1,10 +1,11 @@
 import asyncio
-from typing import Any, Dict, List
-import httpx
-from aiolimiter import AsyncLimiter
-import psycopg2
-from psycopg2.extras import execute_values
 import logging
+from typing import Any, Dict, List
+
+import httpx
+import psycopg2
+from aiolimiter import AsyncLimiter
+from psycopg2.extras import execute_values
 
 logging.basicConfig(level=logging.INFO)
 rate_limit = AsyncLimiter(1, 1)
