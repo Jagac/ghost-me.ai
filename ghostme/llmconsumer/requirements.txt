@@ -1,3 +1,6 @@
 pika
 langchain
-unstructured
+pypdf
+torch>2.0.0+cpu
+InstructorEmbedding
+tqdm

@@ -3,6 +3,7 @@ import json
 
 import llm
 import pika
+from llm import LLM
 
 
 def create_rabbitmq_connection():
@@ -40,9 +41,11 @@ def on_message(channel, method_frame, header_frame, body):
     with open(pdf_filename, "wb") as pdf_file:
         pdf_file.write(file_content)
 
-    file = llm.load_document(pdf_filename)
-    chunks = llm.chunk_data(file)
-    print(chunks)
+    embedings_logic = LLM(pdf_filename)
+    text = embedings_logic.chunk()
+    generated_emebedings = embedings_logic.embed(text)
+
+    print(generated_emebedings)
 
     channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 
