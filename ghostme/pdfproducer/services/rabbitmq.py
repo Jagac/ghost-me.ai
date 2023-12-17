@@ -1,4 +1,3 @@
-# https://aio-pika.readthedocs.io/en/latest/rabbitmq-tutorial/2-work-queues.html
 import base64
 import json
 
@@ -7,6 +6,12 @@ from aio_pika.robust_connection import AbstractRobustConnection
 
 
 class RabbitMQService:
+    """
+    RabbitMQ Service Class
+    publishes a json message to RabbitMQ containing the username, job description, and resume pdf.
+    The idea is to have competing llm consumers on the other side that will take care of emailing
+    """
+
     def __init__(
         self, connection_url: str, exchange_name: str, queue_name: str, routing_key: str
     ):
@@ -35,6 +40,7 @@ class RabbitMQService:
         queue = await channel.declare_queue(self.queue_name, durable=True)
         await queue.bind(exchange, routing_key=self.routing_key)
 
+        # making sure a pdf can be sent through rabbitmq
         file_content_base64 = base64.b64encode(file_content).decode()
 
         message_body = {
