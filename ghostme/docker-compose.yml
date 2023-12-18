@@ -40,20 +40,7 @@ services:
         max_attempts: 10
     networks:
       - rabbitmq_go_net
-      
-  scrapers:
-    build:
-      context: courseetl
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 10s
-        max_attempts: 5
-        
-    depends_on:
-      - rabbitmq
-    networks:
-      - rabbitmq_go_net
+
 
   db_postgres:
     image: postgres:alpine

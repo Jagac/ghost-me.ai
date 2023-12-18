@@ -1,8 +1,7 @@
-import asyncio
 from datetime import datetime, timedelta
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
@@ -15,12 +14,15 @@ class AuthService:
     AuthService class contains methods to add, verify, and retrieve users
     """
 
+    api_key_header = APIKeyHeader(name="API-Key")
+
     def __init__(self):
         self.SECRET_KEY = (
             "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
         )
         self.ALGORITHM = "HS256"
         self.ACCESS_TOKEN_EXPIRE_MINUTES = 30
+        self.API_KEY = "test-user-registration"
 
     @staticmethod
     async def hash_password(password: str) -> str:
@@ -46,6 +48,14 @@ class AuthService:
 
         """
         return pwd_context.verify(plain_password, hashed_password)
+
+    async def validate_api_key(self, api_key: str = Depends(api_key_header)):
+        if api_key != self.API_KEY:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid API key",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     async def create_access_token(self, data: dict) -> str:
         """

@@ -1,6 +1,7 @@
 import asyncio
 from typing import Optional
-
+from sqlalchemy import delete
+import base64
 from database.dbinitializer import AsyncSession, Database
 from database.models import UserModel, Ghost
 from fastapi import Depends, FastAPI, File, HTTPException, status
@@ -28,6 +29,10 @@ async def startup_event():
     config.logging.info("Startup successful")
     await database_service.initialize_tables()
     app.rabbitmq_connection = await rabbitmq_service.create_connection()
+    f = open("ascii-art.txt", "r")
+    ascii_art = f.read()
+    print(ascii_art)
+    f.close()
 
 
 app.add_event_handler("startup", startup_event)
@@ -75,7 +80,9 @@ async def create_upload_file(
 
 @app.post("/ghostmev1/users/register", status_code=status.HTTP_201_CREATED)
 async def create_user(
-    user_data: UserSchema, db: AsyncSession = Depends(database_service.get_session)
+    user_data: UserSchema,
+    db: AsyncSession = Depends(database_service.get_session),
+    api_key: str = Depends(auth_service.validate_api_key),
 ):
     hashed_password = await auth_service.hash_password(user_data.password)
 
@@ -84,6 +91,7 @@ async def create_user(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+    config.logging.info(f"api_key working {api_key}")
     config.logging.info(f"User {user_data.username} registered")
 
     return {"message": "User created successfully"}
@@ -115,18 +123,15 @@ async def login_user(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.delete("/ghostmev1/users/delete")
+@app.delete("/ghostmev1/users/delete", status_code=status.HTTP_200_OK)
 async def delete_user(
     db: AsyncSession = Depends(database_service.get_session),
     current_user: str = Depends(auth_service.get_current_user),
 ):
-    user_row = await db.execute(
-        UserModel.__table__.select().where(UserModel.username == current_user)
-    )
-    user = user_row.fetchone()
+    delete_statement = delete(UserModel).where(UserModel.username == current_user)
+    result = await db.execute(delete_statement)
 
-    if user:
-        await db.delete(user)
+    if result.rowcount > 0:
         await db.commit()
         return {"message": "User and associated data deleted successfully"}
     else:
@@ -152,14 +157,16 @@ async def get_user_uploads(
     uploads = uploads.fetchall()
 
     if uploads:
-        # Extract relevant information from the uploads
-        user_uploads = [
-            {
-                "pdf_resume": upload.Ghost.pdf_resume,
-                "job_description": upload.Ghost.job_description,
+        user_uploads = []
+        for upload in uploads:
+            pdf_resume_content_base64 = base64.b64encode(upload.pdf_resume).decode()
+
+            user_upload = {
+                "pdf_resume_content_base64": pdf_resume_content_base64,
+                "job_description": upload.job_description,
             }
-            for upload in uploads
-        ]
+            user_uploads.append(user_upload)
+
         return user_uploads
     else:
         raise HTTPException(

@@ -137,4 +137,5 @@ def main():
     base_url = "https://www.real.discount/api-web/all-courses/?store=Udemy&page={}&per_page=10&orderby=undefined&free=0&search=&language=English&cat=&subcat=&editorschoices="
     raw_data = asyncio.run(extract(base_url))
     transformed = transform(raw_data)
-    dump_to_pgs("jagac", "123", "db_postgres", transformed, "courses")
+    print(transformed)
+    # dump_to_pgs("jagac", "123", "db_postgres", transformed, "courses")

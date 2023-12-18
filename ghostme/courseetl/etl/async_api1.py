@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from psycopg2.extras import execute_values
 
 logging.basicConfig(level=logging.INFO)
-rate_limit = AsyncLimiter(1, 1)
+rate_limit = AsyncLimiter(2, 1)
 
 
 async def make_request(
@@ -38,6 +38,7 @@ async def make_request(
                 # Log the payload for retry
                 logging.info(f"Retrying after {retry_delay} seconds...")
                 await asyncio.sleep(retry_delay)
+
 
 async def extract(starting_payload, url):
     payloads = []
@@ -154,4 +155,4 @@ def main():
     raw_data = asyncio.run(extract(payload, url))
     transformed = transform(raw_data)
     print(transformed)
-    dump_to_pgs("jagac", "123", "db_postgres", transformed, "courses")
+    # dump_to_pgs("jagac", "123", "db_postgres", transformed, "courses")
