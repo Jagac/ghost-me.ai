@@ -3,18 +3,23 @@ import json
 import pika
 from llm import LLM
 import os
+from urllib.parse import urlparse
 
 
 class LLMConsumer:
-    def __init__(self):
+    def __init__(self, amqp_url):
+        # Parse the AMQP URL
+        url_parts = urlparse(amqp_url)
+
         rabbitmq_params = {
-            "host": "rabbitmq",
-            "port": 5672,
-            "virtualhost": "/",
-            "login": "guest",
-            "password": "guest",
+            "host": url_parts.hostname,
+            "port": url_parts.port or 5672,  # Default port for AMQP
+            "virtualhost": url_parts.path[1:] if url_parts.path else "/",
+            "login": url_parts.username,
+            "password": url_parts.password,
         }
 
+        # Establish a secure connection using the AMQPS protocol
         connection_params = pika.ConnectionParameters(
             host=rabbitmq_params["host"],
             port=rabbitmq_params["port"],
@@ -61,9 +66,9 @@ class LLMConsumer:
 
         pdf_processor = LLM(pdf_filename)
         documents = pdf_processor.load_pdf()
-        embedding = pdf_processor.generate_embedings(documents)
+        # embedding = pdf_processor.generate_embedings(documents)
         print(job_desc)
-        print(embedding)
+        print(documents)
         os.remove(pdf_filename)
         self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
 

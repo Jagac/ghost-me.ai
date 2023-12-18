@@ -9,9 +9,12 @@ from schemas.userschema import UserSchema
 from services import config
 from services.auth import AuthService
 from services.rabbitmq import RabbitMQService
+import os
 
-db_conn_string = "postgresql+asyncpg://jagac:123@db_postgres/ghostmedb"
-connection_url = "amqp://guest:guest@rabbitmq:5672/"
+db_conn_string = os.getenv("db_conn_string")
+connection_url = os.getenv("connection_url")
+# db_conn_string = "postgresql+asyncpg://jagac:123@db_postgres/ghostmedb"
+# connection_url = "amqp://guest:guest@rabbitmq:5672/"
 
 app = FastAPI()
 auth_service = AuthService()
