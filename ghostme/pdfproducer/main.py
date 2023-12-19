@@ -1,15 +1,17 @@
 import asyncio
-from typing import Optional
-from sqlalchemy import delete
 import base64
+import os
+from typing import Optional
+
+from fastapi import Depends, FastAPI, File, HTTPException, status
+from sqlalchemy import delete
+
 from database.dbinitializer import AsyncSession, Database
 from database.models import UserModel, Ghost
-from fastapi import Depends, FastAPI, File, HTTPException, status
 from schemas.userschema import UserSchema
 from services import config
 from services.auth import AuthService
 from services.rabbitmq import RabbitMQService
-import os
 
 db_conn_string = os.getenv("db_conn_string")
 connection_url = os.getenv("connection_url")

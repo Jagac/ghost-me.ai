@@ -35,8 +35,12 @@ class Database:
         Returns: AsyncSession
 
         """
+
         db = self.async_session()
         try:
             yield db
+        except Exception:
+            await db.rollback()
+            raise
         finally:
             await db.close()

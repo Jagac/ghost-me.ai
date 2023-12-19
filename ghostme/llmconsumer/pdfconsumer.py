@@ -7,19 +7,18 @@ from urllib.parse import urlparse
 
 
 class LLMConsumer:
-    def __init__(self, amqp_url):
+    def __init__(self, amqp_url: str):
         # Parse the AMQP URL
         url_parts = urlparse(amqp_url)
 
         rabbitmq_params = {
             "host": url_parts.hostname,
-            "port": url_parts.port or 5672,  # Default port for AMQP
+            "port": url_parts.port or 5672,
             "virtualhost": url_parts.path[1:] if url_parts.path else "/",
             "login": url_parts.username,
             "password": url_parts.password,
         }
 
-        # Establish a secure connection using the AMQPS protocol
         connection_params = pika.ConnectionParameters(
             host=rabbitmq_params["host"],
             port=rabbitmq_params["port"],
@@ -74,5 +73,7 @@ class LLMConsumer:
 
 
 if __name__ == "__main__":
-    consumer = LLMConsumer()
+    consumer = LLMConsumer(
+
+    )
     consumer.create_consumer()
