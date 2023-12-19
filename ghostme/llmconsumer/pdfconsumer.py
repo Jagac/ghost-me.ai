@@ -73,7 +73,5 @@ class LLMConsumer:
 
 
 if __name__ == "__main__":
-    consumer = LLMConsumer(
-
-    )
+    consumer = LLMConsumer()
     consumer.create_consumer()

@@ -9,9 +9,13 @@ class GhostWrapper:
         self,
         email: str,
         password: str,
+        local: Optional[bool] = False,
         api_key: Optional[str] = "test-user-registration",
     ):
-        self.base_url = "https://ghost-me-api.onrender.com"
+        if local:
+            self.base_url = "http://localhost:8080"
+        else:
+            self.base_url = "https://ghost-me-api.onrender.com"
 
         self.user_data = {
             "username": email,
