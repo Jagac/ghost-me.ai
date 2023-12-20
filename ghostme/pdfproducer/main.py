@@ -6,6 +6,7 @@ from typing import Optional
 from fastapi.responses import ORJSONResponse
 from fastapi import Depends, FastAPI, File, HTTPException, status, BackgroundTasks
 from sqlalchemy import delete, select
+from sqlalchemy.orm import selectinload
 
 from database.dbinitializer import AsyncSession, Database
 from database.models import UserModel, Ghost
@@ -82,23 +83,26 @@ async def create_user(
 async def login_user(
     user_data: UserSchema, db: AsyncSession = Depends(database_service.get_session)
 ):
-    query = select(UserModel).where(UserModel.username == user_data.username)
-    user = await db.execute(query)
-    user = user.scalar()
-
-    if not user:
+    query = select(UserModel.password).filter(UserModel.username == user_data.username)
+    hashed_password = await db.scalar(query)
+    config.logging.info(f"hashed_password {hashed_password}")
+    if hashed_password is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
+
     is_password_valid = await auth_service.verify_password(
-        user_data.password, user.password
+        user_data.password, hashed_password
     )
+
     if not is_password_valid:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Password not found"
         )
 
-    access_token = await auth_service.create_access_token(data={"sub": user.username})
+    access_token = await auth_service.create_access_token(
+        data={"sub": user_data.username}
+    )
     config.logging.info(f"User {user_data.username} logged in")
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -124,12 +128,12 @@ async def create_upload_file(
     new_ghosting_info = Ghost(
         username=current_user, pdf_resume=file, job_description=job_desc
     )
-
+    config.logging.info("Adding to pgs")
     db.add(new_ghosting_info)
     await db.commit()
     await db.refresh(new_ghosting_info)
 
-    # are executed after the response is sent to the client
+    config.logging.info("Pushing to rabbitmq")
     background_tasks.add_task(
         rabbitmq_service.publish_message,
         file_content=file,
@@ -152,33 +156,36 @@ async def get_user_uploads(
     skip: Optional[int] = 0,
     limit: Optional[int] = 10,
 ):
-    query = (
-        select(UserModel)
-        .join(Ghost)
-        .filter(UserModel.username == current_user)
-        .offset(skip)
-        .limit(limit)
-    )
-
-    uploads = await db.execute(query)
-    uploads = uploads.fetchall()
-
-    if uploads:
-        user_uploads = []
-        for upload in uploads:
-            pdf_resume_content_base64 = base64.b64encode(upload.pdf_resume).decode()
-
-            user_upload = {
-                "pdf_resume_content_base64": pdf_resume_content_base64,
-                "job_description": upload.job_description,
-            }
-            user_uploads.append(UserResponseSchema(**user_upload))
-
-        return user_uploads
-    else:
-        raise HTTPException(
-            status_code=404, detail=f"No uploads found for user '{current_user}'"
+    try:
+        # Query the database to get the user and associated ghosts
+        result = await db.execute(
+            select(UserModel)
+            .options(selectinload(UserModel.ghosts))
+            .filter(UserModel.username == current_user)
         )
+        user = result.scalar()
+
+        # If the user does not exist, raise HTTP 404 Not Found
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Extract pdf_resume and job_description from the user's ghosts
+        uploads = []
+        for ghost in user.ghosts:
+            # Encode pdf_resume as base64
+            pdf_resume_base64 = base64.b64encode(ghost.pdf_resume).decode()
+            uploads.append(
+                {
+                    "pdf_resume": pdf_resume_base64,
+                    "job_description": ghost.job_description,
+                }
+            )
+
+        return uploads
+
+    except Exception as e:
+        # Handle other exceptions as needed
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.delete("/ghostmev1/users/delete", status_code=status.HTTP_200_OK)

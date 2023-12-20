@@ -91,8 +91,8 @@ class GhostWrapper:
             uploads = response.json()
 
             for index, upload in enumerate(uploads):
-                pdf_resume_content_base64 = upload.get("pdf_resume_content_base64", "")
-                pdf_resume_content = base64.b64decode(pdf_resume_content_base64)
+                pdf_resume_base64 = upload.get("pdf_resume", "")
+                pdf_resume_content = base64.b64decode(pdf_resume_base64)
 
                 job_description = upload.get("job_description", "")
 
@@ -123,3 +123,17 @@ class GhostWrapper:
         else:
             print(f"Failed to delete user. Status code: {response.status_code}")
             print(response.text)
+
+
+if __name__ == "__main__":
+    ghost_service = GhostWrapper(email="jagac", password="123", local=True)
+
+    ghost_service.register()
+    jwt_token = ghost_service.get_access_token()
+    ghost_service.upload_data(
+        jwt_token=jwt_token,
+        file_path=r"C:\Users\Jagos\Downloads\Jagos Perovic_Resume.pdf",
+        job_description="random",
+    )
+    ghost_service.retrieve_uploaded_data(jwt_token=jwt_token)
+    # ghost_service.delete(jwt_token)

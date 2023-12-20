@@ -11,5 +11,5 @@ class UserSchema(BaseModel):
 
 
 class UserResponseSchema(BaseModel):
-    pdf_resume_content_base64: str
+    pdf_resume: str
     job_description: str
