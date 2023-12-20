@@ -3,12 +3,13 @@ import base64
 import os
 from typing import Optional
 
-from fastapi import Depends, FastAPI, File, HTTPException, status
-from sqlalchemy import delete
+from fastapi.responses import ORJSONResponse
+from fastapi import Depends, FastAPI, File, HTTPException, status, BackgroundTasks
+from sqlalchemy import delete, select
 
 from database.dbinitializer import AsyncSession, Database
 from database.models import UserModel, Ghost
-from schemas.userschema import UserSchema
+from schemas.userschema import UserSchema, UserResponseSchema
 from services import config
 from services.auth import AuthService
 from services.rabbitmq import RabbitMQService
@@ -49,41 +50,11 @@ async def main():
     return {"server": "is working"}
 
 
-@app.post("/ghostmev1/uploads", status_code=status.HTTP_202_ACCEPTED)
-async def create_upload_file(
-    job_desc: str,
-    current_user: str = Depends(auth_service.get_current_user),
-    file: bytes = File(...),
-    db: AsyncSession = Depends(database_service.get_session),
-):
-    if not file:
-        raise HTTPException(status_code=400, detail="No file provided")
-
-    if b"%PDF" not in file:
-        raise HTTPException(status_code=400, detail="Uploaded file is not a PDF")
-
-    config.logging.info("Pushing to rabbitmq")
-    await asyncio.create_task(
-        rabbitmq_service.publish_message(
-            file_content=file,
-            job_desc=job_desc,
-            username=current_user,
-            connection=app.rabbitmq_connection,
-        )
-    )
-
-    new_ghosting_info = Ghost(
-        username=current_user, pdf_resume=file, job_description=job_desc
-    )
-    config.logging.info("Adding to pgs")
-    db.add(new_ghosting_info)
-    await db.commit()
-    await db.refresh(new_ghosting_info)
-
-    return {"message": "Data uploaded successfully"}
-
-
-@app.post("/ghostmev1/users/register", status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/ghostmev1/users/register",
+    status_code=status.HTTP_201_CREATED,
+    response_class=ORJSONResponse,
+)
 async def create_user(
     user_data: UserSchema,
     db: AsyncSession = Depends(database_service.get_session),
@@ -96,20 +67,24 @@ async def create_user(
     db.add(new_user)
     await db.commit()
     await db.refresh(new_user)
+
     config.logging.info(f"api_key working {api_key}")
     config.logging.info(f"User {user_data.username} registered")
 
     return {"message": "User created successfully"}
 
 
-@app.post("/ghostmev1/users/login", status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/ghostmev1/users/login",
+    status_code=status.HTTP_201_CREATED,
+    response_class=ORJSONResponse,
+)
 async def login_user(
     user_data: UserSchema, db: AsyncSession = Depends(database_service.get_session)
 ):
-    user_row = await db.execute(
-        UserModel.__table__.select().where(UserModel.username == user_data.username)
-    )
-    user = user_row.fetchone()
+    query = select(UserModel).where(UserModel.username == user_data.username)
+    user = await db.execute(query)
+    user = user.scalar()
 
     if not user:
         raise HTTPException(
@@ -128,37 +103,64 @@ async def login_user(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.delete("/ghostmev1/users/delete", status_code=status.HTTP_200_OK)
-async def delete_user(
-    db: AsyncSession = Depends(database_service.get_session),
+@app.post(
+    "/ghostmev1/uploads",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_class=ORJSONResponse,
+)
+async def create_upload_file(
+    background_tasks: BackgroundTasks,
+    job_desc: str,
     current_user: str = Depends(auth_service.get_current_user),
+    file: bytes = File(...),
+    db: AsyncSession = Depends(database_service.get_session),
 ):
-    delete_statement = delete(UserModel).where(UserModel.username == current_user)
-    result = await db.execute(delete_statement)
+    if not file:
+        raise HTTPException(status_code=400, detail="No file provided")
 
-    if result.rowcount > 0:
-        await db.commit()
-        return {"message": "User and associated data deleted successfully"}
-    else:
-        raise HTTPException(status_code=404, detail="User not found")
+    if b"%PDF" not in file:
+        raise HTTPException(status_code=400, detail="Uploaded file is not a PDF")
+
+    new_ghosting_info = Ghost(
+        username=current_user, pdf_resume=file, job_description=job_desc
+    )
+
+    db.add(new_ghosting_info)
+    await db.commit()
+    await db.refresh(new_ghosting_info)
+
+    # are executed after the response is sent to the client
+    background_tasks.add_task(
+        rabbitmq_service.publish_message,
+        file_content=file,
+        job_desc=job_desc,
+        username=current_user,
+        connection=app.rabbitmq_connection,
+    )
+
+    return {"message": "Data uploaded successfully"}
 
 
-@app.get("/ghostmev1/users/uploads", response_model=list[dict])
+@app.get(
+    "/ghostmev1/users/uploads",
+    response_model=list[UserResponseSchema],
+    response_class=ORJSONResponse,
+)
 async def get_user_uploads(
     db: AsyncSession = Depends(database_service.get_session),
     current_user: str = Depends(auth_service.get_current_user),
     skip: Optional[int] = 0,
     limit: Optional[int] = 10,
 ):
-    uploads_query = (
-        UserModel.__table__.join(Ghost.__table__)
-        .select()
-        .where(UserModel.username == current_user)
+    query = (
+        select(UserModel)
+        .join(Ghost)
+        .filter(UserModel.username == current_user)
         .offset(skip)
         .limit(limit)
     )
 
-    uploads = await db.execute(uploads_query)
+    uploads = await db.execute(query)
     uploads = uploads.fetchall()
 
     if uploads:
@@ -170,10 +172,25 @@ async def get_user_uploads(
                 "pdf_resume_content_base64": pdf_resume_content_base64,
                 "job_description": upload.job_description,
             }
-            user_uploads.append(user_upload)
+            user_uploads.append(UserResponseSchema(**user_upload))
 
         return user_uploads
     else:
         raise HTTPException(
             status_code=404, detail=f"No uploads found for user '{current_user}'"
         )
+
+
+@app.delete("/ghostmev1/users/delete", status_code=status.HTTP_200_OK)
+async def delete_user(
+    db: AsyncSession = Depends(database_service.get_session),
+    current_user: str = Depends(auth_service.get_current_user),
+):
+    query = delete(UserModel).where(UserModel.username == current_user)
+    result = await db.execute(query)
+
+    if result.rowcount > 0:
+        await db.commit()
+        return {"message": "User and associated data deleted successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="User not found")

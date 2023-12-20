@@ -8,3 +8,8 @@ class UserSchema(BaseModel):
 
     username: str
     password: str
+
+
+class UserResponseSchema(BaseModel):
+    pdf_resume_content_base64: str
+    job_description: str
