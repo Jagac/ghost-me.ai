@@ -1,0 +1,9 @@
+langchain
+chromadb
+torch
+transformers
+sentence_transformers
+pypdf
+ctransformers
+psycopg2-binary
+pandas
