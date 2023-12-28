@@ -1,6 +1,6 @@
 # ghost-me.ai
 
-![Alt text](assets/ghostimg.jpg)
+![Alt text](assets/ghostimg.jpg){: .center}
 ## Goal
 The main goal of this project is to combat ghosting i.e. 
 not getting a reply after applying to a job opening. The idea is
