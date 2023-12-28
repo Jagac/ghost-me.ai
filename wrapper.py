@@ -9,8 +9,8 @@ class GhostWrapper:
         self,
         email: str,
         password: str,
+        registration_key: str,
         local: Optional[bool] = False,
-        api_key: Optional[str] = "test-user-registration",
     ):
         if local:
             self.base_url = "http://localhost:8080"
@@ -21,7 +21,7 @@ class GhostWrapper:
             "username": email,
             "password": password,
         }
-        self.api_key = api_key
+        self.api_key = registration_key
 
     def register(self):
         url = self.base_url + "/ghostmev1/users/register"
@@ -126,7 +126,9 @@ class GhostWrapper:
 
 
 if __name__ == "__main__":
-    ghost_service = GhostWrapper(email="jagac", password="123", local=True)
+    ghost_service = GhostWrapper(
+        email="jagac", password="jagac", registration_key="key", local=True
+    )
 
     ghost_service.register()
     jwt_token = ghost_service.get_access_token()
@@ -136,4 +138,4 @@ if __name__ == "__main__":
         job_description="random",
     )
     ghost_service.retrieve_uploaded_data(jwt_token=jwt_token)
-    # ghost_service.delete(jwt_token)
+    ghost_service.delete(jwt_token=jwt_token)
