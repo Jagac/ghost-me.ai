@@ -124,18 +124,3 @@ class GhostWrapper:
             print(f"Failed to delete user. Status code: {response.status_code}")
             print(response.text)
 
-
-if __name__ == "__main__":
-    ghost_service = GhostWrapper(
-        email="jagac", password="jagac", registration_key="key", local=True
-    )
-
-    ghost_service.register()
-    jwt_token = ghost_service.get_access_token()
-    ghost_service.upload_data(
-        jwt_token=jwt_token,
-        file_path=r"C:\Users\Jagos\Downloads\Jagos Perovic_Resume.pdf",
-        job_description="random",
-    )
-    ghost_service.retrieve_uploaded_data(jwt_token=jwt_token)
-    ghost_service.delete(jwt_token=jwt_token)

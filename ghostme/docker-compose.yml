@@ -56,7 +56,6 @@ services:
       - rabbitmq
     networks:
       - rabbitmq_go_net
-    restart: always
 
   emailservice:
     build:

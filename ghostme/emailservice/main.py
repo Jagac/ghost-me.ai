@@ -14,8 +14,8 @@ def send():
     email_subject = request.form["subject"]
     email_message = request.form["message"]
 
-    sender_email = os.getenv("base_email")
-    sender_password = os.getenv("password")
+    sender_email = ""
+    sender_password = ""
     receiver_email = email_address
 
     message = MIMEMultipart()

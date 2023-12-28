@@ -1,9 +1,11 @@
 langchain
 chromadb
-torch
+torch>=2.0.0+cpu
 transformers
 sentence_transformers
 pypdf
 ctransformers
 psycopg2-binary
 pandas
+pika
+httpx

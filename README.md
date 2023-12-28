@@ -24,6 +24,7 @@ The project is quite expensive on the machine mostly due to llama-2. I hardcoded
 
 Currently, learning frontend, so it's on its way but for now you can use the class located in wrapper.py 
 which uses requests to simplify interactions with the API through python
+Link to the model: https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGML/tree/main
 
 ### Demo
 ```python

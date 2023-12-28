@@ -21,7 +21,7 @@ class DatabaseHandler:
                 cur.execute(
                     f"""
                 CREATE TABLE IF NOT EXISTS {table} (
-                    id SERIAL PRIMARY KEY,
+                    id INTEGER,
                     title VARCHAR(255) NOT NULL,
                     headline TEXT,
                     rating FLOAT,

@@ -24,7 +24,7 @@ payload = {
     "price_value": "",
     "section_value": "",
 }
-db_conn_string = ""
+db_conn_string = "postgresql://jagac:123@db_postgres/ghostmedb"
 rate_limit = AsyncLimiter(max_rate=2, time_period=1)
 
 

@@ -6,8 +6,8 @@ import pika
 import os
 
 from emailrq import EmailRequestHandler
-from ghostme.llmservice.llama.ingest import VectorHandler
-from ghostme.llmservice.llama.llm import LLM
+from llama.ingest import VectorHandler
+from llama.llm import LLM
 
 
 class Consumer:
@@ -67,7 +67,9 @@ class Consumer:
         job_desc = message.get("job_desc")
 
         file_content_base64 = message.get("file_content")
-        file_content = base64.b64decode(file_content_base64.encode())
+        print(file_content_base64)
+        file_content = base64.b64decode(file_content_base64)
+        print(file_content)
 
         pdf_filename = f"{username}.pdf"
         with open(pdf_filename, "wb") as pdf_file:
@@ -76,14 +78,14 @@ class Consumer:
         vector_db = VectorHandler(
             job_desc=job_desc,
             resume_pdf_path=pdf_filename,
-            db_connection_string="",
+            db_connection_string="postgresql://jagac:123@db_postgres/ghostmedb",
             embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
         )
 
         if vector_db.initialize_vector_db():
             answer = self.llm.answer_query(
                 query="Based on the job description, the resume, find the interests and recommend the exact courses you"
-                "know name 3",
+                      "know name 3",
                 qa_bot_instance=self.qa_bot_instance,
             )
             extracted_answer = answer.get("result").strip()
@@ -107,5 +109,5 @@ class Consumer:
 
 
 if __name__ == "__main__":
-    consumer = Consumer(amqp_url="amqp://guest:guest@rabbitmq:5672/")
+    consumer = Consumer(amqp_url="amqp://guest:guest@rabbitmq:5672")
     consumer.initialize_consumer()

@@ -18,10 +18,10 @@ class AuthService:
     api_key_header = APIKeyHeader(name="API-Key")
 
     def __init__(self):
-        self.SECRET_KEY = os.getenv("secret_key")
+        self.SECRET_KEY = ""
         self.ALGORITHM = "HS256"
-        self.ACCESS_TOKEN_EXPIRE_MINUTES = 1000
-        # self.API_KEY = os.getenv("registration_key")
+        self.ACCESS_TOKEN_EXPIRE_MINUTES = 60
+        self.API_KEY = ""
 
     @staticmethod
     async def hash_password(password: str) -> str:

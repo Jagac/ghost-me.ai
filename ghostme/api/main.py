@@ -24,9 +24,8 @@ from services.rabbitmq import RabbitMQService
 
 db_conn_string = os.getenv("db_conn_string")
 connection_url = os.getenv("connection_url")
-# db_conn_string = "postgresql+asyncpg://jagac:123@db_postgres/ghostmedb"
-# connection_url = "amqp://guest:guest@rabbitmq:5672/"
-
+db_conn_string = "postgresql+asyncpg://jagac:123@db_postgres/ghostmedb"
+connection_url = "amqp://guest:guest@rabbitmq:5672/"
 
 app = FastAPI()
 auth_service = AuthService()
@@ -64,9 +63,9 @@ async def main():
     response_class=ORJSONResponse,
 )
 async def create_user(
-    user_data: UserSchema,
-    db: AsyncSession = Depends(database_service.get_session),
-    api_key: str = Depends(auth_service.validate_api_key),
+        user_data: UserSchema,
+        db: AsyncSession = Depends(database_service.get_session),
+        api_key: str = Depends(auth_service.validate_api_key),
 ):
     try:
         hashed_password = await auth_service.hash_password(user_data.password)
@@ -100,7 +99,7 @@ async def create_user(
     response_class=ORJSONResponse,
 )
 async def login_user(
-    user_data: UserSchema, db: AsyncSession = Depends(database_service.get_session)
+        user_data: UserSchema, db: AsyncSession = Depends(database_service.get_session)
 ):
     try:
         query = select(UserModel.password).filter(
@@ -143,11 +142,11 @@ async def login_user(
     response_class=ORJSONResponse,
 )
 async def create_upload_file(
-    background_tasks: BackgroundTasks,
-    job_desc: str,
-    current_user: str = Depends(auth_service.get_current_user),
-    file: UploadFile = File(...),
-    db: AsyncSession = Depends(database_service.get_session),
+        background_tasks: BackgroundTasks,
+        job_desc: str,
+        current_user: str = Depends(auth_service.get_current_user),
+        file: UploadFile = File(...),
+        db: AsyncSession = Depends(database_service.get_session),
 ):
     try:
         if not file:
@@ -161,17 +160,20 @@ async def create_upload_file(
                 detail="Uploaded file is not a PDF",
             )
 
+        pdf_content = file.file.read()
+
         new_ghosting_info = Ghost(
-            username=current_user, pdf_resume=file.file.read(), job_description=job_desc
+            username=current_user, pdf_resume=pdf_content, job_description=job_desc
         )
 
         db.add(new_ghosting_info)
         await db.commit()
         await db.refresh(new_ghosting_info)
 
+        # Publish the message with the file content
         background_tasks.add_task(
             rabbitmq_service.publish_message,
-            file_content=file.file.read(),
+            file_content=pdf_content,
             job_desc=job_desc,
             username=current_user,
             connection=app.rabbitmq_connection,
@@ -187,6 +189,8 @@ async def create_upload_file(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"message": "Internal server error"},
         )
+    finally:
+        file.file.close()
 
 
 @app.get(
@@ -194,10 +198,10 @@ async def create_upload_file(
     response_model=list[UserResponseSchema],
 )
 async def get_user_uploads(
-    db: AsyncSession = Depends(database_service.get_session),
-    current_user: str = Depends(auth_service.get_current_user),
-    skip: Optional[int] = 0,
-    limit: Optional[int] = 10,
+        db: AsyncSession = Depends(database_service.get_session),
+        current_user: str = Depends(auth_service.get_current_user),
+        skip: Optional[int] = 0,
+        limit: Optional[int] = 10,
 ):
     try:
         result = await db.execute(
@@ -238,8 +242,8 @@ async def get_user_uploads(
 
 @app.delete("/ghostmev1/users/delete", status_code=status.HTTP_200_OK)
 async def delete_user(
-    db: AsyncSession = Depends(database_service.get_session),
-    current_user: str = Depends(auth_service.get_current_user),
+        db: AsyncSession = Depends(database_service.get_session),
+        current_user: str = Depends(auth_service.get_current_user),
 ):
     try:
         query = delete(UserModel).where(UserModel.username == current_user)
