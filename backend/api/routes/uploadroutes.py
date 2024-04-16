@@ -100,24 +100,23 @@ async def get_user_uploads(
     limit: Optional[int] = 10,
 ):
     try:
-
-        user = await UserModel.get_uploads(db, email=current_user)
-        if not user:
+        uploads = await UploadModel.get_uploads(db, email=current_user)
+        if not uploads:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="No uploads found"
             )
 
-        uploads = []
-        for ghost in user.uploads:
-            pdf_resume_base64 = base64.b64encode(ghost.pdf_resume).decode()
-            uploads.append(
+        processed_uploads = []
+        for upload in uploads:
+            pdf_resume_base64 = base64.b64encode(upload.pdf_resume).decode()
+            processed_uploads.append(
                 {
                     "pdf_resume": pdf_resume_base64,
-                    "job_description": ghost.job_description,
+                    "job_description": upload.job_description,
                 }
             )
 
-        return uploads
+        return processed_uploads
 
     except SQLAlchemyError as e:
         await db.rollback()

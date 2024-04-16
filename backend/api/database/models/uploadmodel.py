@@ -1,6 +1,8 @@
+from typing import Optional
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-
+from sqlalchemy.orm import Mapped, mapped_column, relationship, joinedload
+from sqlalchemy import select
+from .usermodel import UserModel
 from ..dbhandler import AsyncSession, Base
 
 
@@ -19,3 +21,14 @@ class UploadModel(Base):
         db.add(transaction)
         await db.commit()
         await db.refresh(transaction)
+
+    @classmethod
+    async def get_uploads(cls, db: AsyncSession, email: str) -> Optional["UploadModel"]:
+        result = await db.execute(
+            select(UploadModel)
+            .join(UploadModel.user)
+            .options(joinedload(UploadModel.user))
+            .filter(UserModel.email == email)
+        )
+        uploads = result.scalars().all()
+        return uploads

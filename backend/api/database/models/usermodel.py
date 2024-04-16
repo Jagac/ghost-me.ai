@@ -45,17 +45,6 @@ class UserModel(Base):
             return None
 
     @classmethod
-    async def get_uploads(cls, db: AsyncSession, email: str) -> Optional["UserModel"]:
-        result = await db.execute(
-            select(UserModel)
-            .options(selectinload(UserModel.uploads))
-            .filter(UserModel.email == email)
-        )
-        user = result.scalar()
-
-        return user
-
-    @classmethod
     async def delete_data(cls, db: AsyncSession, email: str) -> None:
         query = delete(cls).where(cls.email == email)
         result = await db.execute(query)
