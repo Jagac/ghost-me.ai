@@ -37,9 +37,10 @@ class VectorHandler:
 
     def _load_course_titles_from_db(self) -> list:
         with psycopg2.connect(self.db_connection_string) as connection:
-            query = "SELECT title FROM courses"
+            query = "SELECT title, headline FROM courses"
             df = pd.read_sql_query(query, connection)
-        df = df.rename(columns={"title": "text"})
+            df['text'] = df['title'] +""+ df['headline']
+            
         loaded_df = DataFrameLoader(df, page_content_column="text")
         return loaded_df.load()
 

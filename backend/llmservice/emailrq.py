@@ -1,4 +1,5 @@
 import httpx
+import json
 
 
 class EmailRequestHandler:
@@ -17,7 +18,7 @@ class EmailRequestHandler:
             "subject": subject,
             "message": message,
         }
-        return data
+        return json.dumps(data)
 
     def push_message(self, data: dict):
         response = self.client.post(self.url, data=data)

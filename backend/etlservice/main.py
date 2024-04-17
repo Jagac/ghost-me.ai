@@ -1,5 +1,5 @@
 from multiprocessing import Process
-
+import os
 from aiolimiter import AsyncLimiter
 from etl.async_api1 import CoursesityCourseExtractor
 from etl.async_api2 import RealDiscountCourseExtractor
@@ -23,7 +23,7 @@ payload = {
     "price_value": "",
     "section_value": "",
 }
-db_conn_string = "postgresql://jagac:123@db_postgres/ghostmedb"
+db_conn_string = os.getenv("db_conn_string")
 rate_limit = AsyncLimiter(max_rate=2, time_period=1)
 
 

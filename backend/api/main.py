@@ -2,11 +2,12 @@ from database import sessionmanager
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from routes import user_router, upload_router
+import os
 
 
 def init_app(init_db=True) -> "FastAPI":
-    # db_conn_string = os.getenv("db_conn_string")
-    db_conn_string = "postgresql+asyncpg://jagac:123@db_postgres/ghostmedb"
+    db_conn_string = os.getenv("db_conn_string")
+ 
     lifespan = None
 
     if init_db:

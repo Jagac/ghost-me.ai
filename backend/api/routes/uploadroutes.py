@@ -19,14 +19,15 @@ from fastapi.responses import ORJSONResponse
 from rabbitmq import QueueHandler
 from schemas import UploadSchema
 from sqlalchemy.exc import SQLAlchemyError
+import os
 
 
 router = APIRouter(prefix="/users", tags=["uploads"])
 
-connection_url = "amqp://guest:guest@rabbitmq:5672/"
+mq_conn_string = os.getenv("mq_conn_string")
 auth_service = AuthHandler()
 rabbitmq_service = QueueHandler(
-    connection_url=connection_url,
+    connection_url=mq_conn_string,
     exchange_name="upload_exchange",
     queue_name="upload_queue",
     routing_key="resume_pdf",

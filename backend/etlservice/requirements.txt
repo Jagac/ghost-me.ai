@@ -1,3 +1,3 @@
-httpx
-aiolimiter
-psycopg2-binary
+httpx==0.27.0
+aiolimiter==1.1.0
+psycopg2-binary==2.9.9

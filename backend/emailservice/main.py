@@ -1,5 +1,6 @@
 import os
 import smtplib
+import threading
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -7,17 +8,7 @@ from flask import Flask, jsonify, request
 
 app = Flask(__name__)
 
-
-@app.route("/v1/email", methods=["POST"])
-def send():
-    email_address = request.form["address"]
-    email_subject = request.form["subject"]
-    email_message = request.form["message"]
-
-    sender_email = ""
-    sender_password = ""
-    receiver_email = email_address
-
+def send_in_background(sender_email, sender_password, receiver_email, email_subject, email_message):
     message = MIMEMultipart()
     message["From"] = sender_email
     message["To"] = receiver_email
@@ -30,7 +21,28 @@ def send():
         server.login(sender_email, sender_password)
         server.sendmail(sender_email, receiver_email, message.as_string())
         server.quit()
-
-        return jsonify({"message": "email sent"})
     except Exception as e:
-        return str(e)
+        print(f"Error occurred while sending email: {e}")
+
+@app.route("/v1/email", methods=["POST"])
+def send_email():
+    data = request.get_json()
+    email_address = data["address"]
+    email_subject = data["subject"]
+    email_message = data["message"]
+
+    sender_email = "jagacnoob2@gmail.com"
+    sender_password = os.getenv("email_password")
+    receiver_email = email_address
+
+    # Create a separate thread to send the email asynchronously
+    email_thread = threading.Thread(
+        target=send_in_background,
+        args=(sender_email, sender_password, receiver_email, email_subject, email_message)
+    )
+    email_thread.start()
+
+    return jsonify({"success": "Email request received and being processed."})
+
+if __name__ == "__main__":
+    app.run()
