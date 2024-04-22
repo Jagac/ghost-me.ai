@@ -1,9 +1,10 @@
 from typing import Optional
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship, joinedload
-from sqlalchemy import select
-from .usermodel import UserModel
+
+from sqlalchemy import ForeignKey, select
+from sqlalchemy.orm import Mapped, joinedload, mapped_column, relationship
+
 from ..dbhandler import AsyncSession, Base
+from .usermodel import UserModel
 
 
 class UploadModel(Base):
@@ -12,7 +13,7 @@ class UploadModel(Base):
     email: Mapped[str] = mapped_column(ForeignKey("users.email", ondelete="CASCADE"))
     pdf_resume: Mapped[bytes]
     job_description: Mapped[str]
-    
+
     user = relationship("UserModel", back_populates="uploads")
 
     @classmethod

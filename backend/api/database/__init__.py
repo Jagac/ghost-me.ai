@@ -1,4 +1,4 @@
-from .dbhandler import DatabaseSessionManager, AsyncSession
+from .dbhandler import AsyncSession, DatabaseSessionManager
 
 sessionmanager = DatabaseSessionManager()
 

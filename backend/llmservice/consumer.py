@@ -1,92 +1,31 @@
-import base64
-import json
 import os
 import shutil
-from urllib.parse import urlparse
+
 import pika
-from emailrq import EmailRequestHandler
-from llama.ingest import VectorHandler
+from emailwrapper.handler import EmailRequestHandler
 from llama.llm import LLM
+from llama.vectors import VectorHandler
+
 
 class Consumer:
     def __init__(self, amqp_url: str):
-        url_parts = urlparse(amqp_url)
-
-        rabbitmq_params = {
-            "host": url_parts.hostname,
-            "port": url_parts.port or 5672,
-            "virtualhost": url_parts.path[1:] if url_parts.path else "/",
-            "login": url_parts.username,
-            "password": url_parts.password,
-        }
-
-        connection_params = pika.ConnectionParameters(
-            host=rabbitmq_params["host"],
-            port=rabbitmq_params["port"],
-            virtual_host=rabbitmq_params["virtualhost"],
-            credentials=pika.PlainCredentials(
-                rabbitmq_params["login"], rabbitmq_params["password"]
-            ),
-        )
-
-        self.connection = pika.BlockingConnection(connection_params)
+        self.connection = pika.BlockingConnection(pika.URLParameters(amqp_url))
         self.channel = self.connection.channel()
 
         self.email_service = EmailRequestHandler(
             email_service_url="http://emailservice:8000/v1/email"
         )
 
+        self.vector_handler = VectorHandler(
+            db_connection_string=os.getenv("DB_CONN_STRING"),
+            embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
+        )
+
         self.llm = LLM(
             llama_path="model/llama-2-7b-chat.ggmlv3.q8_0.bin",
             embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
         )
-        self.qa_bot_instance = self.llm.initialize_rag()
 
-
-    def _on_message(self, channel, method_frame, header_frame, body):
-        try:
-            message = json.loads(body.decode())
-            username = message.get("username")
-            job_desc = message.get("job_desc")
-
-            file_content_base64 = message.get("file_content")
-            file_content = base64.b64decode(file_content_base64)
-
-            pdf_filename = f"{username}.pdf"
-            with open(pdf_filename, "wb") as pdf_file:
-                pdf_file.write(file_content)
-
-            vector_db = VectorHandler(
-                job_desc=job_desc,
-                resume_pdf_path=pdf_filename,
-                db_connection_string="postgresql://jagac:123@db_postgres/ghostmedb",
-                embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
-            )
-
-            if vector_db.initialize_vector_db():
-                answer = self.llm.answer_query(
-                    query="Based on the job description, the resume, find the interests and recommend the exact courses you"
-                    "know name 3",
-                    qa_bot_instance=self.qa_bot_instance,
-                )
-                extracted_answer = answer.get("result").strip()
-
-                self.email_service.create_and_push_message(
-                    user_email=username,
-                    subject="Ghostme.ai courses",
-                    message=extracted_answer,
-                )
-
-            shutil.rmtree("db")
-            os.remove(pdf_filename)
-            os.remove("job_desc.txt")
-            
-            self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            
-            
-            
     def initialize_consumer(self):
         self.channel.exchange_declare(
             exchange="upload_exchange", exchange_type="direct", durable=True
@@ -101,6 +40,36 @@ class Consumer:
         )
         self.channel.start_consuming()
 
+    def _on_message(self, channel, method_frame, header_frame, body) -> None:
+        try:
+            self.vector_handler.initialize_vector_db(body)
+            self.qa_bot_instance = self.llm.initialize_rag()
+
+            answer = self.llm.answer_query(
+                query="Based on the job description, the resume, find the "
+                "interests and recommend the exact courses you know name 3",
+                qa_bot_instance=self.qa_bot_instance,
+            )
+            extracted_answer = answer.get("result").strip()
+
+            self.email_service.create_and_push_message(
+                user_email=self.vector_handler.email,
+                subject="Courses",
+                message=extracted_answer,
+            )
+            self.email_service.close_connection()
+
+        except:
+            self.email_service.create_and_push_message(
+                user_email="jagac41@gmail.com",
+                subject="service down",
+                message="llm service is down",
+            )
+
+        shutil.rmtree("db")
+        self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+
+
 if __name__ == "__main__":
-    consumer = Consumer(amqp_url="amqp://guest:guest@rabbitmq:5672")
+    consumer = Consumer(os.getenv("MQ_CONN_STRING"))
     consumer.initialize_consumer()

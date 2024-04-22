@@ -1,5 +1,6 @@
-from multiprocessing import Process
 import os
+from multiprocessing import Process
+
 from aiolimiter import AsyncLimiter
 from etl.async_api1 import CoursesityCourseExtractor
 from etl.async_api2 import RealDiscountCourseExtractor

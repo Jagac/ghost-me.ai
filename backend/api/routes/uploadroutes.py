@@ -5,26 +5,16 @@ from typing import Optional
 from auth import AuthHandler
 from database import AsyncSession, get_db
 from database.models import UploadModel, UserModel
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    UploadFile,
-    status,
-)
+from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
+                     HTTPException, UploadFile, status)
 from fastapi.responses import ORJSONResponse
 from rabbitmq import QueueHandler
-from schemas import UploadSchema
+from types import UploadSchema
 from sqlalchemy.exc import SQLAlchemyError
-import os
-
 
 router = APIRouter(prefix="/users", tags=["uploads"])
 
-mq_conn_string = os.getenv("mq_conn_string")
+mq_conn_string = os.getenv("MQ_CONN_STRING")
 auth_service = AuthHandler()
 rabbitmq_service = QueueHandler(
     connection_url=mq_conn_string,

@@ -1,7 +1,7 @@
 from typing import Optional
 
 from sqlalchemy import delete, select
-from sqlalchemy.exc import  NoResultFound
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import Mapped, mapped_column, relationship, selectinload
 
 from ..dbhandler import AsyncSession, Base

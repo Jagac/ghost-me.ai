@@ -1,11 +1,12 @@
-langchain
+langchain==0.1.16
+langchain-community==0.0.33
 chromadb
 torch>=2.0.0+cpu
 transformers
 sentence_transformers
 pypdf
 ctransformers
-psycopg2-binary
 pandas
 pika
 httpx
+psycopg2

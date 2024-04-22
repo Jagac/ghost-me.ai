@@ -1,13 +1,8 @@
 import contextlib
 from typing import AsyncIterator
 
-from sqlalchemy.ext.asyncio import (
-    AsyncConnection,
-    AsyncEngine,
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import (AsyncConnection, AsyncEngine, AsyncSession,
+                                    async_sessionmaker, create_async_engine)
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -19,7 +14,7 @@ class DatabaseSessionManager:
         self._sessionmaker: async_sessionmaker | None = None
 
     def init(self, host: str) -> None:
-        self._engine = create_async_engine(host) #echo=True
+        self._engine = create_async_engine(host)  # echo=True
         self._sessionmaker = async_sessionmaker(
             autocommit=False, autoflush=False, bind=self._engine
         )

@@ -1,25 +1,12 @@
-import base64
-import os
-from typing import Annotated, Optional
+from typing import Annotated
 
 from auth.authentication import AuthHandler
 from database import AsyncSession, get_db
 from database.models.usermodel import UserModel
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    File,
-    HTTPException,
-    UploadFile,
-    status,
-)
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import ORJSONResponse
-from schemas import UserSchema, JWTSchema
-from sqlalchemy import delete, select
-from sqlalchemy.exc import IntegrityError, NoResultFound, SQLAlchemyError
-from sqlalchemy.orm import selectinload
+from types import JWTSchema, UserSchema
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 router = APIRouter(prefix="/users", tags=["user"])
 
