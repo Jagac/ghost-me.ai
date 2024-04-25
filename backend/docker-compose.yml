@@ -1,5 +1,6 @@
 version: '3'
 services:
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -65,6 +66,8 @@ services:
   emailservice:
     build:
       context: emailservice
+    ports:
+      - 8000:8000
     networks:
       - rabbitmq_go_net
     restart: unless-stopped

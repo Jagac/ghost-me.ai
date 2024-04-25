@@ -29,7 +29,7 @@ def send_in_background(
 
 
 @app.route("/v1/email", methods=["POST"])
-def send_email():
+def send_email() -> dict[str]:
     data = request.get_json()
     email_address = data["address"]
     email_subject = data["subject"]
@@ -53,3 +53,7 @@ def send_email():
     email_thread.start()
 
     return jsonify({"success": "Email request received and being processed."})
+
+
+# if __name__ == "__main__":
+#     app.run(debug=True, host="0.0.0.0", port=8000)

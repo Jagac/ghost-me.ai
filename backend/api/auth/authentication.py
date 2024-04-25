@@ -9,6 +9,7 @@ from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -17,7 +18,7 @@ class AuthHandler:
     api_key_header = APIKeyHeader(name="API-Key")
 
     def __init__(self):
-        self.SECRET_KEY = "jagax"
+        self.SECRET_KEY = str(os.getenv("SECRET_KEY"))
         self.ALGORITHM = "HS256"
         self.ACCESS_TOKEN_EXPIRE_MINUTES = 60
         self.API_KEY = ""

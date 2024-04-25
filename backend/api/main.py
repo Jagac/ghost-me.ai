@@ -16,13 +16,12 @@ def init_app(init_db=True) -> "FastAPI":
 
         @asynccontextmanager
         async def lifespan(app: FastAPI):
-            await sessionmanager.drop_all()
             await sessionmanager.create_all()
             yield
             if sessionmanager._engine is not None:
                 await sessionmanager.close()
 
-    server = FastAPI(title="FastAPI server", lifespan=lifespan)
+    server = FastAPI(title="FastAPI server", lifespan=lifespan, docs_url="/api/docs")
 
     server.include_router(user_router, prefix="/api", tags=["user"])
     server.include_router(upload_router, prefix="/api", tags=["uploads"])
@@ -30,9 +29,8 @@ def init_app(init_db=True) -> "FastAPI":
     return server
 
 
+app = init_app()
 f = open("static/ascii-art.txt", "r")
 ascii_art = f.read()
 print(ascii_art)
 f.close()
-
-app = init_app()

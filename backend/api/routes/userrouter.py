@@ -3,21 +3,17 @@ from typing import Annotated
 from auth.authentication import AuthHandler
 from database import AsyncSession, get_db
 from database.models.usermodel import UserModel
-from fastapi import APIRouter, Depends, HTTPException, status
+from emailwrapper import EmailRequestHandler
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import ORJSONResponse
-from types import JWTSchema, UserSchema
+from schemas import ForgotPasswordSchema, JWTSchema, ResetPasswordSchema, UserSchema
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-router = APIRouter(prefix="/users", tags=["user"])
-
+email_service = EmailRequestHandler(
+    email_service_url="http://emailservice:8000/v1/email"
+)
 auth_service = AuthHandler()
-
-
-@router.get("/")
-def index(user: Annotated[str, Depends(auth_service.get_current_user)]):
-    if user:
-        print(user)
-    return {"message": user}
+router = APIRouter(prefix="/users", tags=["user"])
 
 
 @router.post(
@@ -30,8 +26,6 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        validated_user_data = UserSchema(**user_data.model_dump())
-
         hashed_password = await auth_service.hash_password(user_data.password)
         await UserModel.add_user(db=db, email=user_data.email, password=hashed_password)
 
@@ -105,4 +99,81 @@ async def delete_user(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
+        )
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    user_email: ForgotPasswordSchema,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        db_email = await UserModel.get_user(db, email=user_email.email)
+        if not db_email:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User with this email does not exist",
+            )
+
+        new_token = await auth_service.create_access_token(
+            data={"sub": user_email.email}
+        )
+
+        background_tasks.add_task(
+            email_service.create_and_push_message,
+            user_email.email,
+            "Password Reset",
+            f"Hello, this is your token for password reset: {new_token}",
+        )
+
+        return ORJSONResponse(
+            content={"message": "Email has been sent"}, status_code=status.HTTP_200_OK
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
+
+
+@router.post("/reset-password")
+async def reset_password(
+    passwor_reset_form: ResetPasswordSchema, db: AsyncSession = Depends(get_db)
+):
+    try:
+        info = await auth_service.get_current_user(
+            token=passwor_reset_form.secret_token, db=db
+        )
+
+        if info is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Password Reset Payload or Reset Link Expired",
+            )
+
+        if passwor_reset_form.new_password != passwor_reset_form.confirm_password:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="New password and confirm password are not the same.",
+            )
+
+        hashed_password = await auth_service.hash_password(
+            passwor_reset_form.new_password
+        )
+        user = await UserModel.get_user(db, email=info)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        user.password = hashed_password
+        await db.commit()
+
+        return ORJSONResponse(
+            content={"message": "Password reset successfully"},
+            status_code=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
         )

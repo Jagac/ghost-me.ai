@@ -10,6 +10,7 @@ class EmailRequestHandler:
     def __init__(self, email_service_url: str):
         self.url = email_service_url
         self.client = httpx.Client()
+        self.headers = {"Content-Type": "application/json"}
 
     @staticmethod
     def create_message(user_email: str, subject: str, message: str) -> dict:
@@ -21,8 +22,8 @@ class EmailRequestHandler:
         return orjson.dumps(data)
 
     def push_message(self, data: dict):
-        response = self.client.post(self.url, data=data)
-        print(response.json())
+        response = self.client.post(self.url, data=data, headers=self.headers)
+        response.raise_for_status()
 
     def create_and_push_message(
         self, user_email: str, subject: str, message: str
