@@ -1,11 +1,18 @@
 import json
 
 import psycopg2
+from urllib.parse import urlparse
 
 
 class DatabaseHandler:
     def __init__(self, conn_string: str):
-        self.conn_string = conn_string
+        self.conn_string = urlparse(conn_string)
+
+        self.db_username = self.conn_string.username
+        self.db_password = self.conn_string.password
+        self.db_host = self.conn_string.hostname
+        self.db_port = self.conn_string.port
+        self.db_name = self.conn_string.path[1:]
 
     def create_table(self, table: str) -> None:
         """
@@ -16,7 +23,13 @@ class DatabaseHandler:
         Returns: None
 
         """
-        with psycopg2.connect(self.conn_string) as conn:
+        with psycopg2.connect(
+            dbname=self.db_name,
+            user=self.db_username,
+            password=self.db_password,
+            host=self.db_host,
+            port=self.db_port,
+        ) as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     f"""
@@ -45,7 +58,13 @@ class DatabaseHandler:
         Returns: None
 
         """
-        with psycopg2.connect(self.conn_string) as conn:
+        with psycopg2.connect(
+            dbname=self.db_name,
+            user=self.db_username,
+            password=self.db_password,
+            host=self.db_host,
+            port=self.db_port,
+        ) as conn:
             with conn.cursor() as cur:
                 query_sql = f""" insert into {table}
                                select * from json_populate_recordset(NULL::{table}, %s) """

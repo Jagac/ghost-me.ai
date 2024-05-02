@@ -2,8 +2,8 @@ import os
 from multiprocessing import Process
 
 from aiolimiter import AsyncLimiter
-from etl.async_api1 import CoursesityCourseExtractor
-from etl.async_api2 import RealDiscountCourseExtractor
+from etl.scraper1 import CoursesityCourseExtractor
+from etl.scraper2 import RealDiscountCourseExtractor
 
 url = "https://api.coursesity.com/api/courses/"
 base_url = (
@@ -24,7 +24,8 @@ payload = {
     "price_value": "",
     "section_value": "",
 }
-db_conn_string = os.getenv("db_conn_string")
+db_conn_string = os.getenv("DB_CONN_STRING")
+
 rate_limit = AsyncLimiter(max_rate=2, time_period=1)
 
 

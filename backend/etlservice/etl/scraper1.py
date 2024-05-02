@@ -6,43 +6,25 @@ import httpx
 from aiolimiter import AsyncLimiter
 
 from .database import DatabaseHandler
+from .base import CourseExtractor
 
 
-class CoursesityCourseExtractor:
+class CoursesityCourseExtractor(CourseExtractor):
     def __init__(
         self, url: str, db_conn_string: str, payload: dict, rate_limit: AsyncLimiter
     ):
+        super().__init__(db_conn_string, rate_limit)
         self.url = url
         self.payload = payload
-        self.db_handler = DatabaseHandler(db_conn_string)
-        self.rate_limit = rate_limit
-        self.logging_config()
-
-    def logging_config(self):
-        logging.basicConfig(level=logging.INFO)
 
     async def make_request(
-        self,
-        client: httpx.AsyncClient,
-        payload: dict,
-        limit: AsyncLimiter,
-        max_retries=5,
-        retry_delay=10,
+        self, client: httpx.AsyncClient, payload: dict, *args, **kwargs
     ) -> dict[str, Any]:
         """
         Make a request to the api, on error exponential delay and return a dict response
-        Args:
-            client: client for httpx
-            payload: parameters for httpx to send to api
-            limit: rate limit as the api can crash
-            max_retries: number of times to retry on failure
-            retry_delay: starting delay (exponentially increases)
-
-        Returns:
-
         """
-        async with limit:
-            for attempt in range(1, max_retries + 1):
+        async with self.rate_limit:
+            for attempt in range(1, 2226):
                 try:
                     request = await client.post(self.url, json=payload)
                     request.raise_for_status()
@@ -50,51 +32,43 @@ class CoursesityCourseExtractor:
                     return response
                 except httpx.HTTPError as e:
                     logging.info(f"Attempt {attempt} failed with error: {e}")
-
-                    if attempt == max_retries:
+                    if attempt == 5:
                         raise e
+                    await asyncio.sleep(2**attempt)
 
-                    retry_delay *= 2
-                    logging.info(f"Retrying after {retry_delay} seconds...")
-                    await asyncio.sleep(retry_delay)
-
-    async def extract(self) -> tuple[Any]:
+    async def extract_and_dump(self):
         """
         Extraction requires post requests, so we have to specify the payload
-        Returns: extracted data
-
+        After every 5 requests, clean the data and dump it to PostgreSQL
         """
         payloads = []
         for i in range(1, 20):
             payload2 = self.payload.copy()
             payload2["page"] = i
             payloads.append(payload2)
-
         async with httpx.AsyncClient() as client:
             tasks = []
-
-            for payload in payloads:
-                task = self.make_request(
-                    client=client, payload=payload, limit=self.rate_limit
-                )
+            cleaned_data = []
+            for idx, payload in enumerate(payloads, start=1):
+                task = self.make_request(client=client, payload=payload)
                 tasks.append(task)
+                if idx % 5 == 0 or idx == len(payloads):
+                    raw_data = await asyncio.gather(*tasks)
+                    tasks = []
+                    transformed_data = self.transform(raw_data)
+                    cleaned_data.extend(transformed_data)
+                    if cleaned_data:
+                        self.db_handler.create_table("courses")
+                        self.db_handler.dump_to_pgs(cleaned_data, "courses")
+                        logging.info("Added to postgres")
+                        cleaned_data = []
 
-            data = await asyncio.gather(*tasks)
-
-        return data
-
-    @staticmethod
-    def transform(data: tuple[Any]) -> list[dict]:
+    def transform(self, data: tuple[Any]) -> list[dict]:
         """
         Gets only the data we need
-        Args:
-            data: extracted data using the extract() function
-
-        Returns: cleaned data
-
         """
         json_object = []
-        for idx, val in enumerate(data):
+        for val in data:
             for course_info in val:
                 course = {
                     "id": course_info.get("productId", None),
@@ -108,14 +82,7 @@ class CoursesityCourseExtractor:
                     "sub_category": course_info.get("subCategory", None),
                     "price": course_info.get("priceType", None),
                 }
-
                 json_object.append(course)
 
+        logging.info("Transformed")
         return json_object
-
-    def run(self):
-        raw_data = asyncio.run(self.extract())
-        transformed = self.transform(raw_data)
-
-        self.db_handler.create_table("courses")
-        self.db_handler.dump_to_pgs(transformed, "courses")
