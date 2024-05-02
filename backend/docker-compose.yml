@@ -1,8 +1,7 @@
-version: '3'
 services:
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.13.1-alpine
     container_name: rabbitmq
     environment:
       - RABBITMQ_DEFAULT_USER=guest
@@ -15,7 +14,7 @@ services:
     restart: unless-stopped
 
   db_postgres:
-    image: postgres:latest
+    image: postgres:alpine
     container_name: db_postgres
     ports:
       - "5432:5432"
@@ -28,7 +27,7 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: nginx:latest
+    image: nginx:alpine
     container_name: nginx
     volumes:
       - './nginx.conf:/etc/nginx/nginx.conf:ro'
@@ -49,7 +48,7 @@ services:
       - rabbitmq_go_net
     restart: unless-stopped
     environment:
-      - DB_CONN_STRING=${DB_CONN_STRING}
+      - DB_CONN_STRING=${ASYNC_DB_CONN_STRING}
       - MQ_CONN_STRING=${MQ_CONN_STRING}
 
   # llmservice:
@@ -74,13 +73,13 @@ services:
     environment:
       - EMAIL_PASSWORD=${EMAIL_PASSWORD}
 
-  # etlservice:
-  #   build:
-  #     context: etlservice
-  #   networks:
-  #     - rabbitmq_go_net
-  #   environment:
-  #     DB_CONN_STRING: ${DB_CONN_STRING}
+  etlservice:
+    build:
+      context: etlservice
+    networks:
+      - rabbitmq_go_net
+    environment:
+      DB_CONN_STRING: ${ETL_DB_CONN_STRING}
 
 networks:
   rabbitmq_go_net:
