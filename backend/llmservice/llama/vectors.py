@@ -1,16 +1,15 @@
 import base64
 import json
 import os
-import shutil
 
 import pandas as pd
-import pika
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores.utils import filter_complex_metadata
 from langchain_community.document_loaders import (DataFrameLoader, PyPDFLoader,
                                                   TextLoader)
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
+from sqlalchemy import create_engine
 
 ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 DB_DIR = os.path.join(ABS_PATH, "db")
@@ -23,6 +22,7 @@ class VectorHandler:
         embedding_model_name: str,
     ) -> None:
         self.db_connection_string = db_connection_string
+        self.engine = create_engine(self.db_connection_string)
         self.embedding_model_name = embedding_model_name
         self._email = None
 
@@ -30,12 +30,12 @@ class VectorHandler:
     def email(self):
         return self._email
 
-    def _extract_and_save_pdf(self, body: bytes) -> str:
+    def _extract_from_sources(self, body: bytes) -> list[str, str, pd.DataFrame]:
         message = json.loads(body.decode())
         email = message.get("email")
+        self._email = email
         job_desc = message.get("job_desc")
 
-        # Save job description to a text file
         job_desc_filename = f"{email}_job_desc.txt"
         with open(job_desc_filename, "w") as job_desc_file:
             job_desc_file.write(job_desc)
@@ -47,24 +47,21 @@ class VectorHandler:
         with open(pdf_filename, "wb") as pdf_file:
             pdf_file.write(file_content)
 
-        return job_desc_filename, pdf_filename
+        query = "SELECT title, headline FROM courses"
+        df = pd.read_sql_query(query, self.engine)
+        df["text"] = df["title"] + "" + df["headline"]
+
+        return job_desc_filename, pdf_filename, df
 
     def initialize_vector_db(self, body: bytes):
-        job_desc_filename, pdf_filename = self._extract_and_save_pdf(body)
+        job_desc_filename, pdf_filename, df = self._extract_from_sources(body)
 
         loaded_desc = TextLoader(job_desc_filename)
         loaded_documents = PyPDFLoader(pdf_filename)
-
-        # Load course titles from database
-        with psycopg2.connect(self.db_connection_string) as connection:
-            query = "SELECT title, headline FROM courses"
-            df = pd.read_sql_query(query, connection)
-            df["text"] = df["title"] + "" + df["headline"]
-
         loaded_df = DataFrameLoader(df, page_content_column="text")
 
         all_loaders = [loaded_df, loaded_documents, loaded_desc]
-        loaded_documents = [document for loader in all_loaders for document in loader]
+        loaded_documents = [document for loader in all_loaders for document in loader.load()]
 
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=256, chunk_overlap=64)
         chunked_documents = text_splitter.split_documents(loaded_documents)
@@ -83,6 +80,5 @@ class VectorHandler:
 
         vector_database.persist()
 
-        # Cleanup temporary files
         os.remove(job_desc_filename)
         os.remove(pdf_filename)

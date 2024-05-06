@@ -5,8 +5,8 @@ from typing import Any
 import httpx
 from aiolimiter import AsyncLimiter
 
-from .database import DatabaseHandler
 from .base import CourseExtractor
+from .database import DatabaseHandler
 
 
 class CoursesityCourseExtractor(CourseExtractor):

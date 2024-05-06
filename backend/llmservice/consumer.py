@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 
@@ -6,9 +7,11 @@ from emailwrapper.handler import EmailRequestHandler
 from llama.llm import LLM
 from llama.vectors import VectorHandler
 
+logging.basicConfig(level=logging.INFO)
+
 
 class Consumer:
-    def __init__(self, amqp_url: str):
+    def __init__(self, amqp_url: str, db_conn_string: str) -> None:
         self.connection = pika.BlockingConnection(pika.URLParameters(amqp_url))
         self.channel = self.connection.channel()
 
@@ -17,7 +20,7 @@ class Consumer:
         )
 
         self.vector_handler = VectorHandler(
-            db_connection_string=os.getenv("DB_CONN_STRING"),
+            db_connection_string=db_conn_string,
             embedding_model_name="sentence-transformers/all-MiniLM-L6-v2",
         )
 
@@ -38,6 +41,7 @@ class Consumer:
         self.channel.basic_consume(
             queue="upload_queue", on_message_callback=self._on_message
         )
+        logging.info("Listening for messages")
         self.channel.start_consuming()
 
     def _on_message(self, channel, method_frame, header_frame, body) -> None:
@@ -71,5 +75,5 @@ class Consumer:
 
 
 if __name__ == "__main__":
-    consumer = Consumer(os.getenv("MQ_CONN_STRING"))
+    consumer = Consumer(os.getenv("MQ_CONN_STRING"), os.getenv("DB_CONN_STRING"))
     consumer.initialize_consumer()

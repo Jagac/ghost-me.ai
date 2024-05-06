@@ -6,7 +6,8 @@ from database.models.usermodel import UserModel
 from emailwrapper import EmailRequestHandler
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import ORJSONResponse
-from schemas import ForgotPasswordSchema, JWTSchema, ResetPasswordSchema, UserSchema
+from schemas import (ForgotPasswordSchema, JWTSchema, ResetPasswordSchema,
+                     UserSchema)
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 email_service = EmailRequestHandler(

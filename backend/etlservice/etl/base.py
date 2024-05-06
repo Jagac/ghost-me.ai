@@ -1,10 +1,12 @@
 import abc
-from .database import DatabaseHandler
-from aiolimiter import AsyncLimiter
-import logging
-import httpx
-from typing import Any
 import asyncio
+import logging
+from typing import Any
+
+import httpx
+from aiolimiter import AsyncLimiter
+
+from .database import DatabaseHandler
 
 
 class CourseExtractor(abc.ABC):

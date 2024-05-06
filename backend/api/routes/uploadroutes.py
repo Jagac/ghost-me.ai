@@ -5,16 +5,8 @@ from typing import Optional
 from auth import AuthHandler
 from database import AsyncSession, get_db
 from database.models import UploadModel
-from fastapi import (
-    APIRouter,
-    BackgroundTasks,
-    Depends,
-    File,
-    Form,
-    HTTPException,
-    UploadFile,
-    status,
-)
+from fastapi import (APIRouter, BackgroundTasks, Depends, File, Form,
+                     HTTPException, UploadFile, status)
 from fastapi.responses import ORJSONResponse
 from rabbitmq import QueueHandler
 from schemas import UploadSchema

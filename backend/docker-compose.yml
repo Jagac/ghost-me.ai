@@ -51,16 +51,16 @@ services:
       - DB_CONN_STRING=${ASYNC_DB_CONN_STRING}
       - MQ_CONN_STRING=${MQ_CONN_STRING}
 
-  # llmservice:
-  #   build:
-  #     context: llmservice
-  #   depends_on:
-  #     - rabbitmq
-  #   networks:
-  #     - rabbitmq_go_net
-  #   environment:
-  #     DB_CONN_STRING: ${DB_CONN_STRING}
-  #     MQ_CONN_STRING: ${MQ_CONN_STRING}
+  llmservice:
+    build:
+      context: llmservice
+    depends_on:
+      - rabbitmq
+    networks:
+      - rabbitmq_go_net
+    environment:
+      DB_CONN_STRING: ${SYNC_DB_CONN_STRING}
+      MQ_CONN_STRING: ${MQ_CONN_STRING}
 
   emailservice:
     build:
