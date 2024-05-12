@@ -1,3 +1,4 @@
+import logging
 import os
 import smtplib
 import threading
@@ -5,6 +6,8 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from flask import Flask, jsonify, request
+
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
@@ -53,7 +56,3 @@ def send_email() -> dict[str]:
     email_thread.start()
 
     return jsonify({"success": "Email request received and being processed."})
-
-
-# if __name__ == "__main__":
-#     app.run(debug=True, host="0.0.0.0", port=8000)

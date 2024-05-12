@@ -3,14 +3,14 @@ from typing import Annotated
 from auth.authentication import AuthHandler
 from database import AsyncSession, get_db
 from database.models.usermodel import UserModel
-from emailwrapper import EmailRequestHandler
+from emailwrapper import AsyncEmailRequestHandler
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from fastapi.responses import ORJSONResponse
 from schemas import (ForgotPasswordSchema, JWTSchema, ResetPasswordSchema,
                      UserSchema)
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-email_service = EmailRequestHandler(
+email_service = AsyncEmailRequestHandler(
     email_service_url="http://emailservice:8000/v1/email"
 )
 auth_service = AuthHandler()

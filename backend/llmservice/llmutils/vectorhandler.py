@@ -18,22 +18,15 @@ DB_DIR = os.path.join(ABS_PATH, "db")
 class VectorHandler:
     def __init__(
         self,
-        db_connection_string: str,
+        db_conn_string: str,
         embedding_model_name: str,
     ) -> None:
-        self.db_connection_string = db_connection_string
-        self.engine = create_engine(self.db_connection_string)
+        self.engine = create_engine(db_conn_string)
         self.embedding_model_name = embedding_model_name
-        self._email = None
-
-    @property
-    def email(self):
-        return self._email
 
     def _extract_from_sources(self, body: bytes) -> list[str, str, pd.DataFrame]:
         message = json.loads(body.decode())
         email = message.get("email")
-        self._email = email
         job_desc = message.get("job_desc")
 
         job_desc_filename = f"{email}_job_desc.txt"
@@ -51,17 +44,19 @@ class VectorHandler:
         df = pd.read_sql_query(query, self.engine)
         df["text"] = df["title"] + "" + df["headline"]
 
-        return job_desc_filename, pdf_filename, df
+        return job_desc_filename, pdf_filename, df, email
 
-    def initialize_vector_db(self, body: bytes):
-        job_desc_filename, pdf_filename, df = self._extract_from_sources(body)
+    def initialize_vectors_for_user(self, body: bytes):
+        job_desc_filename, pdf_filename, df, email = self._extract_from_sources(body)
 
         loaded_desc = TextLoader(job_desc_filename)
         loaded_documents = PyPDFLoader(pdf_filename)
         loaded_df = DataFrameLoader(df, page_content_column="text")
 
         all_loaders = [loaded_df, loaded_documents, loaded_desc]
-        loaded_documents = [document for loader in all_loaders for document in loader.load()]
+        loaded_documents = [
+            document for loader in all_loaders for document in loader.load()
+        ]
 
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=256, chunk_overlap=64)
         chunked_documents = text_splitter.split_documents(loaded_documents)
@@ -82,3 +77,5 @@ class VectorHandler:
 
         os.remove(job_desc_filename)
         os.remove(pdf_filename)
+
+        return email

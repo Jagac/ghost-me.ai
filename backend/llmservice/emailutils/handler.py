@@ -2,7 +2,7 @@ import httpx
 import orjson
 
 
-class EmailRequestHandler:
+class SyncEmailRequestHandler:
     """
     Class for sending requests to the email service
     """

@@ -4,7 +4,7 @@ import json
 import httpx
 
 
-class EmailRequestHandler:
+class AsyncEmailRequestHandler:
     """
     Class for sending requests to the email service
     """

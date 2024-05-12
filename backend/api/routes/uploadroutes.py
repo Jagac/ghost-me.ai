@@ -62,7 +62,7 @@ async def create_upload_file(
             rabbitmq_service.publish_message,
             file_content=pdf_content,
             job_desc=job_desc,
-            username=current_user,
+            email=current_user,
             connection=await rabbitmq_service.create_connection(),
         )
 

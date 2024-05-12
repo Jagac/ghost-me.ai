@@ -28,7 +28,7 @@ class QueueHandler:
         self,
         file_content: bytes,
         job_desc: str,
-        username: str,
+        email: str,
         connection: AbstractRobustConnection,
     ) -> None:
         channel = await connection.channel()
@@ -41,7 +41,7 @@ class QueueHandler:
         file_content_base64 = base64.b64encode(file_content).decode()
 
         message_body = {
-            "username": username,
+            "email": email,
             "file_content": file_content_base64,
             "job_desc": job_desc,
         }

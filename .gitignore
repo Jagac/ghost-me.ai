@@ -1,3 +1,4 @@
 env
 .vscode
 backend/.env
+backend/llmservice/model/

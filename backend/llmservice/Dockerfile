@@ -1,10 +1,10 @@
 FROM python:3.11-slim-bookworm
 
-WORKDIR /code
+WORKDIR /app
 
-COPY ./requirements.txt /code/requirements.txt
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-RUN pip install --no-cache-dir -r /code/requirements.txt
+COPY ./requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir --timeout 1000 torch --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --no-cache-dir --timeout 1000 -r /app/requirements.txt
 
-COPY . /code
-CMD ["python", "consumer.py"]
+COPY . /app
+CMD ["python", "main.py"]

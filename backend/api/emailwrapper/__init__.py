@@ -1,1 +1,1 @@
-from .emailhandler import EmailRequestHandler
+from .emailhandler import AsyncEmailRequestHandler

@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Any, Optional
 
@@ -8,7 +9,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_core.prompts import PromptTemplate
 
 
-class LLM:
+class Llm:
     def __init__(self, llama_path: str, embedding_model_name: str) -> None:
         self.prompt_template = """Use the following pieces of context to answer the user's question.
         The example of your response should be:
@@ -19,11 +20,30 @@ class LLM:
         Only return the helpful answer below and nothing else.
         Helpful answer:
         """
-
         self.llama_path = llama_path
         self.embedding_model = embedding_model_name
 
-    def load_model(
+    def initialize_rag(
+        self, persist_dir: Optional[str] = "./db", device: Optional[str] = "cpu"
+    ) -> RetrievalQA:
+
+        embeddings = HuggingFaceEmbeddings(
+            model_name=self.embedding_model,
+            model_kwargs={"device": device},
+        )
+
+        db = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
+        llm = self._load_model()
+        qa = self._create_retrieval_qa_chain(llm=llm, db=db)
+
+        return qa
+
+    @staticmethod
+    def answer_query(query: str, qa_bot_instance: RetrievalQA) -> dict[str, Any]:
+        bot_response = qa_bot_instance({"query": query})
+        return bot_response
+
+    def _load_model(
         self,
         model_type: Optional[str] = "llama",
         max_new_tokens: Optional[int] = 1024,
@@ -40,7 +60,7 @@ class LLM:
         )
         return llm
 
-    def create_retrieval_qa_chain(self, llm: CTransformers, db: Chroma) -> RetrievalQA:
+    def _create_retrieval_qa_chain(self, llm: CTransformers, db: Chroma) -> RetrievalQA:
         qa_prompt = PromptTemplate(
             template=self.prompt_template, input_variables=["context", "question"]
         )
@@ -52,35 +72,3 @@ class LLM:
             chain_type_kwargs={"prompt": qa_prompt},
         )
         return qa_chain
-
-    def initialize_rag(
-        self, persist_dir: Optional[str] = "./db", device: Optional[str] = "cpu"
-    ) -> RetrievalQA:
-        try:
-            embeddings = HuggingFaceEmbeddings(
-                model_name=self.embedding_model,
-                model_kwargs={"device": device},
-            )
-        except Exception as e:
-            raise Exception(
-                f"Failed to load embeddings with model name {self.embedding_model}: {str(e)}"
-            )
-
-        try:
-            db = Chroma(persist_directory=persist_dir, embedding_function=embeddings)
-        except Exception:
-            raise FileNotFoundError(f"No directory found at {persist_dir}")
-
-        try:
-            llm = self.load_model()
-        except Exception as e:
-            raise FileNotFoundError(f"Failed to load model: {str(e)}")
-
-        qa = self.create_retrieval_qa_chain(llm=llm, db=db)
-
-        return qa
-
-    @staticmethod
-    def answer_query(query: str, qa_bot_instance: RetrievalQA) -> dict[str, Any]:
-        bot_response = qa_bot_instance({"query": query})
-        return bot_response

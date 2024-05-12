@@ -61,6 +61,10 @@ services:
     environment:
       DB_CONN_STRING: ${SYNC_DB_CONN_STRING}
       MQ_CONN_STRING: ${MQ_CONN_STRING}
+      EMBEDDING_MODEL: sentence-transformers/all-MiniLM-L6-v2
+      LLM: llama-2-7b-chat.ggmlv3.q2_K.bin
+    volumes:
+      - ./llmservice/model:/app/model
 
   emailservice:
     build:

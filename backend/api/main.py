@@ -1,9 +1,12 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 
 from database import sessionmanager
 from fastapi import FastAPI
 from routes import upload_router, user_router
+
+logging.basicConfig(level=logging.INFO)
 
 
 def init_app(init_db=True) -> "FastAPI":
